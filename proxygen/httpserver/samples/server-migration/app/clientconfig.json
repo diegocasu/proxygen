@@ -1,0 +1,79 @@
+{
+  "serverHost": "127.0.0.1",
+  "serverPort": 6666,
+
+  /*
+   * Set the server migration protocols supported by the mvfst client.
+   * Note that:
+   * 1) if "enable": false, the following settings are ignored;
+   * 2) if "poolOfAddresses": true and Pool of Addresses is one of the
+   *    protocols negotiated with the server, no other protocols except
+   *    Pool of Addresses can be used for migrating that connection,
+   *    for the entire duration of the connection. This rule does not apply
+   *    to the other protocols.
+   */
+  "serverMigration": {
+    "enable": true,
+    "explicit": true,
+    "poolOfAddresses": false,
+    "symmetric": true,
+    "synchronizedSymmetric": true
+  },
+
+  /*
+   * Log TLS secrets to file.
+   */
+  "keyLogging": {
+    "enable": true,
+    "file": "./keys.txt"
+  },
+
+  /*
+   * Set the pattern adopted by the client when sending requests to
+   * the server. "sporadic" means that a new request is sent after
+   * 10 seconds from the reception of the previous response; "backToBack"
+   * means that a new request is sent as soon as the previous response
+   * is received.
+   */
+  "requestPattern": {
+    "sporadic": true,
+    "backToBack": false
+  },
+
+  /*
+   * Set how the body of a request is crafted. "fixed" means that the
+   * client will always send POST requests to the /echo endpoint, with
+   * a body size of 1KB. "fromDistribution" means that:
+   * 1) the client will always send requests to the /distribution endpoint;
+   * 2) the request type will be randomly extracted, with a 0.22 probability
+   *    of being a POST and 0.78 of being a GET;
+   * 3) if the request is a POST, its body size will be randomly extracted
+   *    using HttpPostBodyDistribution, otherwise the body will be empty.
+   */
+  "requestBody": {
+    "fixed": false,
+    "fromDistribution": true
+  },
+
+  /*
+   * Set the master seed of the client.
+   * This seed is used together with std::seed_seq to generate different
+   * seeds for the Pool of Addresses scheduler, the random extraction of
+   * the request type and the random extraction of the body sizes.
+   */
+  "seed": 1,
+
+  /*
+   * Settings for the experiment, used to drive the behaviour of the client,
+   * and send commands to the server and the container migration script.
+   */
+  "experiment": {
+    "id": 1,
+    "serverManagementPort": 7777,
+    "containerMigrationScriptHost": "127.0.0.1",
+    "containerMigrationScriptPort": 8080,
+    "serverMigrationProtocol": "explicit",
+    "serverMigrationHost": "127.0.1.1",
+    "serverMigrationPort": 6666
+  }
+}

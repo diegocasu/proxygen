@@ -1,0 +1,54 @@
+{
+  "host": "127.0.0.1",
+  "port": 6666,
+  "managementPort": 7777,
+
+  /*
+   * Number of threads used by the mvfst server to handle client connections.
+   * 0 means a number of threads equal to std::thread::hardware_concurrency().
+   * Numbers higher than std::thread::hardware_concurrency() are ignored
+   * (it is the same as passing 0).
+   */
+  "numberOfWorkerThreads": 0,
+
+  /*
+   * Set the server migration protocols supported by the mvfst server.
+   * Note that:
+   * 1) if "enable": false, the following settings are ignored;
+   * 2) if "poolOfAddresses": true, but "addressPool" is empty or missing,
+   *    the Pool of Addresses protocol is not enabled;
+   * 3) if "poolOfAddresses": true and Pool of Addresses is one of the
+   *    protocols negotiated with a client, no other protocols except
+   *    Pool of Addresses can be used for migrating that connection,
+   *    for the entire duration of the connection. This rule does not apply
+   *    to the other protocols.
+   */
+  "serverMigration": {
+    "enable": true,
+    "explicit": true,
+    "poolOfAddresses": true,
+    "addressPool": [
+      "127.0.0.1:6666",
+      "127.0.0.2:6666",
+      "127.0.0.3:6666",
+      "127.0.0.4:6666"
+    ],
+    "symmetric": true,
+    "synchronizedSymmetric": true
+  },
+
+  /*
+   * Increase the memory footprint of the server by the given amount of bytes.
+   */
+  "memoryFootprintInflation": {
+    "enable": false,
+    "additionalBytes": 100000000
+  },
+
+  /*
+   * Set the master seed of the server.
+   * This seed is used together with std::seed_seq to generate different
+   * seeds for each client connection.
+   */
+  "seed": 1
+}
