@@ -155,6 +155,45 @@ if (BUILD_QUIC AND BUILD_SAMPLES)
       EXPORT proxygen-exports
       DESTINATION bin
   )
+
+  add_executable(mhq
+      samples/server-migration/app/main.cpp
+      samples/server-migration/app/common/Utils.cpp
+      samples/server-migration/app/server/Server.cpp
+      samples/server-migration/app/server/TransportFactory.cpp
+      samples/server-migration/app/server/MigrationManagementInterface.cpp
+      samples/server-migration/app/server/SessionController.cpp
+      samples/server-migration/app/server/HandlerDispatcher.cpp
+      samples/server-migration/app/server/handler/BaseHandler.cpp
+      samples/server-migration/app/server/handler/EchoHandler.cpp
+      samples/server-migration/app/server/handler/DistributionHandler.cpp
+      samples/server-migration/app/client/Client.cpp
+      samples/server-migration/app/client/RandomPoolMigrationAddressScheduler.cpp
+      samples/server-migration/app/client/Curl.cpp
+      samples/server-migration/app/client/RequestScheduler.cpp
+      samples/server-migration/app/client/ExperimentManager.cpp
+  )
+  target_compile_options(
+      mhq
+      PRIVATE
+          ${_PROXYGEN_COMMON_COMPILE_OPTIONS}
+  )
+  target_link_libraries(
+      mhq
+      PUBLIC
+          fizz::fizz
+          proxygen
+          proxygencurl
+          proxygenhttpserver
+          mvfst::mvfst_transport
+          mvfst::mvfst_client
+          mvfst::mvfst_server
+  )
+  install(
+      TARGETS mhq
+      EXPORT proxygen-exports
+      DESTINATION bin
+  )
 endif()
 
 file(
