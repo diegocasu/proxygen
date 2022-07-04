@@ -113,7 +113,14 @@ void ExperimentManager::handleFirstExperimentNotifyImminentServerMigration() {
 }
 
 void ExperimentManager::handleFirstExperimentTriggerServerMigration() {
-  // TODO implement when migration script is ready
+  VLOG(1) << fmt::format("Sending command={} to migration script={}",
+                         migrateCommand_,
+                         containerMigrationScriptAddress_.describe());
+  responseBaton_.reset();
+  socket_->write(containerMigrationScriptAddress_,
+                 folly::IOBuf::copyBuffer(migrateCommand_));
+  waitForResponseOrRetransmit(containerMigrationScriptAddress_,
+                              migrateCommand_);
 }
 
 void ExperimentManager::handleFirstExperimentStopExperiment() {

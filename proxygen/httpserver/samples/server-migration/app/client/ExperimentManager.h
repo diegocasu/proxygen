@@ -80,6 +80,7 @@ class ExperimentManager
   // Information used to contact the container migration script
   // and trigger a container migration.
   folly::SocketAddress containerMigrationScriptAddress_;
+  std::string migrateCommand_{"migrate"};
 };
 
 } // namespace quic::samples::servermigration
