@@ -1,3 +1,4 @@
+#include <folly/FileUtil.h>
 #include <proxygen/httpserver/samples/server-migration/app/client/ExperimentManager.h>
 #include <proxygen/httpserver/samples/server-migration/app/common/Utils.h>
 #include <proxygen/httpserver/samples/server-migration/app/server/MigrationManagementInterface.h>
@@ -183,6 +184,39 @@ bool ExperimentManager::maybeStopExperiment(
   }
   LOG(ERROR) << "Unknown experiment ID. Stopping the manager";
   folly::assume_unreachable();
+}
+
+void ExperimentManager::maybeSaveServiceTime(const uint64_t &requestNumber,
+                                             const long &serviceTime) {
+  switch (experimentId_) {
+    case ExperimentId::FIRST:
+      if (requestNumber == 3) {
+        serviceTimes_.push_back(serviceTime);
+      }
+      return;
+    case ExperimentId::SECOND:
+      // TODO
+      return;
+  }
+  LOG(ERROR) << "Unknown experiment ID. Stopping the manager";
+  folly::assume_unreachable();
+}
+
+void ExperimentManager::dumpServiceTimesToFile() {
+  folly::dynamic serviceTimes = folly::dynamic::array();
+  for (const auto &time : serviceTimes_) {
+    serviceTimes.push_back(time);
+  }
+
+  folly::dynamic dynamic = folly::dynamic::object();
+  dynamic["experiment"] = static_cast<int64_t>(experimentId_);
+  dynamic["serviceTimes"] = serviceTimes;
+
+  auto dynamicJson = folly::toJson(dynamic);
+  auto success = folly::writeFile(dynamicJson, serviceTimesFile_.data());
+  if (!success) {
+    LOG(ERROR) << "Impossible to dump the service times to file";
+  }
 }
 
 void ExperimentManager::errMessage(const cmsghdr &cmsg) noexcept {

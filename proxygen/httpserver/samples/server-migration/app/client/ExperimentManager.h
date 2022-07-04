@@ -30,6 +30,9 @@ class ExperimentManager
   bool maybeTriggerServerMigration(const uint64_t& numberOfCompletedRequests);
 
   bool maybeStopExperiment(const uint64_t& numberOfCompletedRequests);
+  void maybeSaveServiceTime(const uint64_t& requestNumber,
+                            const long& serviceTime);
+  void dumpServiceTimesToFile();
 
   // AsyncUDPSocket::ErrMessageCallback methods.
   void errMessage(const cmsghdr& cmsg) noexcept override;
@@ -81,6 +84,10 @@ class ExperimentManager
   // and trigger a container migration.
   folly::SocketAddress containerMigrationScriptAddress_;
   std::string migrateCommand_{"migrate"};
+
+  // Significant service times measured during the experiment, in microseconds.
+  std::vector<long> serviceTimes_;
+  std::string serviceTimesFile_{"service_times.json"};
 };
 
 } // namespace quic::samples::servermigration

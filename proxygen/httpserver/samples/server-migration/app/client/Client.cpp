@@ -272,6 +272,7 @@ void Client::scheduleRequests() {
   while (numberOfOpenableStreams > 0) {
     VLOG(1) << "Current number of openable streams=" << numberOfOpenableStreams;
     VLOG(1) << "Completed requests=" << numberOfCompletedRequests;
+    std::chrono::time_point<std::chrono::steady_clock> startRequestTime;
     auto request = requestScheduler_->nextRequest();
     experimentManager_->maybeNotifyImminentServerMigration(
         numberOfCompletedRequests);
@@ -285,6 +286,7 @@ void Client::scheduleRequests() {
         session_->closeWhenIdle();
         return;
       }
+      startRequestTime = std::chrono::steady_clock::now();
       curl_->sendRequest(transaction,
                          request.httpMethod,
                          request.url,
@@ -292,6 +294,11 @@ void Client::scheduleRequests() {
     });
 
     auto gotResponse = curl_->waitForResponse(transactionsTimeout_);
+    auto endRequestTime = std::chrono::steady_clock::now();
+    auto serviceTime = std::chrono::duration_cast<std::chrono::microseconds>(
+                           endRequestTime - startRequestTime)
+                           .count();
+
     if (!gotResponse) {
       LOG(ERROR) << "Connection timeout while waiting for the response. "
                     "Stopping the client";
@@ -315,6 +322,8 @@ void Client::scheduleRequests() {
     ++numberOfCompletedRequests;
     --numberOfOpenableStreams;
 
+    experimentManager_->maybeSaveServiceTime(numberOfCompletedRequests,
+                                             serviceTime);
     auto triggerPTO = experimentManager_->maybeTriggerServerMigration(
         numberOfCompletedRequests);
     if (triggerPTO) {
@@ -328,6 +337,7 @@ void Client::scheduleRequests() {
     auto stop =
         experimentManager_->maybeStopExperiment(numberOfCompletedRequests);
     if (stop) {
+      experimentManager_->dumpServiceTimesToFile();
       break;
     }
   }
