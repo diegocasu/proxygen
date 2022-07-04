@@ -81,8 +81,8 @@ void ExperimentManager::waitForResponseOrRetransmit(
       break;
     }
     if (numberOfRetransmissions == maxNumberOfRetransmissions_) {
-      throw std::runtime_error(
-          "Experiment failed: max number of retransmissions reached");
+      LOG(ERROR) << "Reached max number of retransmissions";
+      break;
     }
     ++numberOfRetransmissions;
     responseBaton_.reset();
