@@ -315,7 +315,16 @@ void Client::scheduleRequests() {
     ++numberOfCompletedRequests;
     --numberOfOpenableStreams;
 
-    experimentManager_->maybeTriggerServerMigration(numberOfCompletedRequests);
+    auto triggerPTO = experimentManager_->maybeTriggerServerMigration(
+        numberOfCompletedRequests);
+    if (triggerPTO) {
+      evb->runInEventBaseThreadAndWait([&] {
+        // Artificially trigger a PTO to let the client adopt the
+        // Proactive Explicit migration protocol.
+        quicClient_->onProbeTimeout();
+      });
+    }
+
     auto stop =
         experimentManager_->maybeStopExperiment(numberOfCompletedRequests);
     if (stop) {

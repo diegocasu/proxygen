@@ -23,7 +23,11 @@ ExperimentManager::ExperimentManager(const folly::dynamic &config,
 
   auto protocolField =
       config["experiment"]["serverMigrationProtocol"].asString();
-  if (protocolField == "explicit") {
+  if (protocolField == "proactiveExplicit") {
+    proactiveExplicit_ = true;
+  }
+  if (protocolField == "proactiveExplicit" ||
+      protocolField == "reactiveExplicit") {
     migrationProtocol_ = ServerMigrationProtocol::EXPLICIT;
     migrationAddress_ = folly::SocketAddress(
         config["experiment"]["serverMigrationHost"].asString(),
@@ -141,17 +145,17 @@ void ExperimentManager::maybeNotifyImminentServerMigration(
   folly::assume_unreachable();
 }
 
-void ExperimentManager::maybeTriggerServerMigration(
+bool ExperimentManager::maybeTriggerServerMigration(
     const uint64_t &numberOfCompletedRequests) {
   switch (experimentId_) {
     case ExperimentId::FIRST:
       if (numberOfCompletedRequests == 2) {
         handleFirstExperimentTriggerServerMigration();
       }
-      return;
+      return proactiveExplicit_;
     case ExperimentId::SECOND:
       // TODO
-      return;
+      return proactiveExplicit_;
   }
   LOG(ERROR) << "Unknown experiment ID. Stopping the manager";
   folly::assume_unreachable();

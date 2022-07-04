@@ -21,7 +21,14 @@ class ExperimentManager
   void start();
   void maybeNotifyImminentServerMigration(
       const uint64_t& numberOfCompletedRequests);
-  void maybeTriggerServerMigration(const uint64_t& numberOfCompletedRequests);
+
+  /**
+   * Returns true if a PTO must be artificially triggered on the client side
+   * to proactively change the server address, i.e. if the Proactive Explicit
+   * protocol must be used to handle the migration.
+   */
+  bool maybeTriggerServerMigration(const uint64_t& numberOfCompletedRequests);
+
   bool maybeStopExperiment(const uint64_t& numberOfCompletedRequests);
 
   // AsyncUDPSocket::ErrMessageCallback methods.
@@ -67,6 +74,7 @@ class ExperimentManager
   // of the server and notify an imminent server migration.
   folly::SocketAddress serverManagementAddress_;
   ServerMigrationProtocol migrationProtocol_;
+  bool proactiveExplicit_{false};
   folly::Optional<folly::SocketAddress> migrationAddress_;
 
   // Information used to contact the container migration script

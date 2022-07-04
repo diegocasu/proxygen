@@ -11,6 +11,9 @@
    *    Pool of Addresses can be used for migrating that connection,
    *    for the entire duration of the connection. This rule does not apply
    *    to the other protocols.
+   * 3) if "explicit": true, both the Proactive Explicit and Reactive Explicit
+   *    variants can be used. The chosen one must be specified in the
+   *    "experiment" section.
    */
   "serverMigration": {
     "enable": true,
@@ -66,13 +69,16 @@
   /*
    * Settings for the experiment, used to drive the behaviour of the client,
    * and send commands to the server and the container migration script.
+   * Note that "serverMigrationProtocol" can be chosen among
+   * "proactiveExplicit", "reactiveExplicit", "poolOfAddresses", "symmetric"
+   * and "synchronizedSymmetric".
    */
   "experiment": {
     "id": 1,
     "serverManagementPort": 7777,
     "containerMigrationScriptHost": "127.0.0.1",
     "containerMigrationScriptPort": 8080,
-    "serverMigrationProtocol": "explicit",
+    "serverMigrationProtocol": "proactiveExplicit",
     "serverMigrationHost": "127.0.1.1",
     "serverMigrationPort": 6666
   }
