@@ -128,6 +128,9 @@ void ExperimentManager::handleFirstExperimentStopExperiment() {
   MigrationManagementInterface::Command command;
   command.action = MigrationManagementInterface::Action::SHUTDOWN;
   auto jsonCommand = managementCommandToJsonString(command);
+
+  // Send the command both to the server application
+  // and the container migration script.
   VLOG(1) << fmt::format("Sending command={} to server management={}",
                          jsonCommand,
                          serverManagementAddress_.describe());
@@ -135,6 +138,14 @@ void ExperimentManager::handleFirstExperimentStopExperiment() {
   socket_->write(serverManagementAddress_,
                  folly::IOBuf::copyBuffer(jsonCommand));
   waitForResponseOrRetransmit(serverManagementAddress_, jsonCommand);
+
+  VLOG(1) << fmt::format("Sending command={} to migration script={}",
+                         jsonCommand,
+                         containerMigrationScriptAddress_.describe());
+  responseBaton_.reset();
+  socket_->write(containerMigrationScriptAddress_,
+                 folly::IOBuf::copyBuffer(jsonCommand));
+  waitForResponseOrRetransmit(containerMigrationScriptAddress_, jsonCommand);
 }
 
 void ExperimentManager::maybeNotifyImminentServerMigration(
