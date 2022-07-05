@@ -334,6 +334,7 @@ void Client::scheduleRequests() {
       });
     }
 
+    maybeUpdateServerManagementAddress();
     auto stop =
         experimentManager_->maybeStopExperiment(numberOfCompletedRequests);
     if (stop) {
@@ -369,6 +370,19 @@ void Client::onServerMigrationProbingStarted(
 
 void Client::onServerMigrationCompleted() noexcept {
   VLOG(1) << "Server migration completed";
+  std::lock_guard<std::mutex> guard(serverMigrationCompletedMutex_);
+  newServerAddress_ = quicClient_->getPeerAddress().getIPAddress();
+}
+
+bool Client::maybeUpdateServerManagementAddress() {
+  std::lock_guard<std::mutex> guard(serverMigrationCompletedMutex_);
+  if (!newServerAddress_) {
+    return false;
+  }
+
+  experimentManager_->updateServerManagementAddress(newServerAddress_.value());
+  newServerAddress_.clear();
+  return true;
 }
 
 } // namespace quic::samples::servermigration

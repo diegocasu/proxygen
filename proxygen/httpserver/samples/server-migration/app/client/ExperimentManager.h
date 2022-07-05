@@ -34,6 +34,13 @@ class ExperimentManager
                             const long& serviceTime);
   void dumpServiceTimesToFile();
 
+  /**
+   * Updates the server management address after a server migration.
+   * The management port is assumed to stay the same across migrations.
+   * @param newServerAddress  the new server IP address.
+   */
+  void updateServerManagementAddress(const folly::IPAddress& newServerAddress);
+
   // AsyncUDPSocket::ErrMessageCallback methods.
   void errMessage(const cmsghdr& cmsg) noexcept override;
   void errMessageError(const folly::AsyncSocketException& ex) noexcept override;
@@ -74,10 +81,14 @@ class ExperimentManager
   unsigned int maxNumberOfRetransmissions_{5};
 
   // Information used to contact the migration management interface
-  // of the server and notify an imminent server migration.
+  // of the server to notify an imminent server migration or a shutdown.
+  // The management address must be updated after a server migration,
+  // so that subsequent commands can be correctly sent.
   folly::SocketAddress serverManagementAddress_;
   ServerMigrationProtocol migrationProtocol_;
   bool proactiveExplicit_{false};
+  // The migration address is valid only if the Explicit
+  // protocol is chosen, otherwise it is empty.
   folly::Optional<folly::SocketAddress> migrationAddress_;
 
   // Information used to contact the container migration script

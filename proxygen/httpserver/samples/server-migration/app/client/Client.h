@@ -56,6 +56,7 @@ class Client
   void initializeRequestScheduler(const folly::dynamic& config);
   void generateSeeds();
   void scheduleRequests();
+  bool maybeUpdateServerManagementAddress();
 
   std::string serverHost_;
   uint16_t serverPort_;
@@ -71,6 +72,13 @@ class Client
   std::chrono::milliseconds transactionsTimeout_{kDefaultIdleTimeout};
   std::chrono::milliseconds connectionTimeout_{std::chrono::seconds(5)};
   bool connectionFailed_{false};
+
+  // Attributes used to check if a server migration has been completed
+  // and possibly store the new server address. They are useful to
+  // decide when the server management address in the experiment
+  // manager must be updated.
+  std::mutex serverMigrationCompletedMutex_;
+  folly::Optional<folly::IPAddress> newServerAddress_;
 };
 
 } // namespace quic::samples::servermigration

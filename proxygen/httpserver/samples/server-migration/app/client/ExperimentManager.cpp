@@ -219,6 +219,16 @@ void ExperimentManager::dumpServiceTimesToFile() {
   }
 }
 
+void ExperimentManager::updateServerManagementAddress(
+    const folly::IPAddress &newServerAddress) {
+  folly::SocketAddress newManagementAddress = folly::SocketAddress(
+      newServerAddress, serverManagementAddress_.getPort());
+  VLOG(1) << fmt::format("Updating the server management address from {} to {}",
+                         serverManagementAddress_.describe(),
+                         newManagementAddress.describe());
+  serverManagementAddress_ = std::move(newManagementAddress);
+}
+
 void ExperimentManager::errMessage(const cmsghdr &cmsg) noexcept {
 }
 
