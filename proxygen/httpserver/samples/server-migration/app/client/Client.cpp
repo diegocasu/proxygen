@@ -181,6 +181,9 @@ void Client::initializeTransportSettings() {
   // kDefaultActiveConnectionIdLimit must be modified.
   settings.selfActiveConnectionIdLimit = 30;
 
+  // Enable keep alive mechanism.
+  settings.enableKeepalive = true;
+
   quicClient_->setTransportSettings(settings);
 }
 
