@@ -60,8 +60,7 @@ void RandomPoolMigrationAddressScheduler::insert(QuicIPAddress address) {
 }
 
 const QuicIPAddress& RandomPoolMigrationAddressScheduler::next() {
-  if (pool_.empty() ||
-      (pool_.size() == 1 && pool_.count(currentServerAddress_))) {
+  if (pool_.empty()) {
     throw QuicInternalException(
         "Attempt to iterate through an empty address pool",
         LocalErrorCode::INTERNAL_ERROR);
