@@ -185,7 +185,7 @@ bool ExperimentManager::maybeStopExperiment(
     const uint64_t &numberOfCompletedRequests) {
   switch (experimentId_) {
     case ExperimentId::FIRST:
-      if (numberOfCompletedRequests == 3) {
+      if (numberOfCompletedRequests == 4) {
         handleFirstExperimentStopExperiment();
         return true;
       }
