@@ -57,6 +57,7 @@ class Client
   void generateSeeds();
   void scheduleRequests();
   bool maybeUpdateServerManagementAddress();
+  void getAndPrintReceivedResponse();
 
   std::string serverHost_;
   uint16_t serverPort_;

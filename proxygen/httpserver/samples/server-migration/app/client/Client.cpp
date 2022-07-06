@@ -312,20 +312,7 @@ void Client::scheduleRequests() {
                     "Stopping the client";
       break;
     }
-
-    auto responseHeaders = curl_->getResponseHeaders();
-    auto responseBody = curl_->getResponseBody();
-    if (responseHeaders) {
-      VLOG(1) << "Received response headers" << *responseHeaders;
-    } else {
-      VLOG(1) << "Received empty response headers";
-    }
-    if (responseBody) {
-      VLOG(1) << fmt::format("Received response body of size={} bytes",
-                             responseBody->length());
-    } else {
-      VLOG(1) << "Received empty body";
-    }
+    getAndPrintReceivedResponse();
 
     ++numberOfCompletedRequests;
     --numberOfOpenableStreams;
@@ -345,6 +332,24 @@ void Client::scheduleRequests() {
     }
   }
   LOG(INFO) << "Stopping the client";
+}
+
+void Client::getAndPrintReceivedResponse() {
+  auto responseHeaders = curl_->getResponseHeaders();
+  auto responseBody = curl_->getResponseBody();
+
+  if (responseHeaders) {
+    VLOG(1) << "Received response headers" << *responseHeaders;
+  } else {
+    VLOG(1) << "Received empty response headers";
+  }
+
+  if (responseBody) {
+    VLOG(1) << fmt::format("Received response body of size={} bytes",
+                           responseBody->length());
+  } else {
+    VLOG(1) << "Received empty body";
+  }
 }
 
 void Client::onPoolMigrationAddressReceived(
