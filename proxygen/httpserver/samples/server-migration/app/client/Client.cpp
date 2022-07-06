@@ -268,11 +268,15 @@ void Client::scheduleRequests() {
   uint64_t numberOfOpenableStreams =
       quicClient_->getNumOpenableBidirectionalStreams();
   uint64_t numberOfCompletedRequests = 0;
+  bool triggerPTO = false;
 
   while (numberOfOpenableStreams > 0) {
     VLOG(1) << "Current number of openable streams=" << numberOfOpenableStreams;
     VLOG(1) << "Completed requests=" << numberOfCompletedRequests;
     std::chrono::time_point<std::chrono::steady_clock> startRequestTime;
+
+    // This method blocks for the required amount of time
+    // if the request pattern is sporadic.
     auto request = requestScheduler_->nextRequest();
 
     evb->runInEventBaseThreadAndWait([&] {
@@ -289,6 +293,11 @@ void Client::scheduleRequests() {
                          request.httpMethod,
                          request.url,
                          std::move(request.body));
+      if (triggerPTO) {
+        VLOG(1) << "Artificially triggering the PTO callback to support "
+                   "the Proactive Explicit protocol";
+        quicClient_->onProbeTimeout();
+      }
     });
 
     auto gotResponse = curl_->waitForResponse(transactionsTimeout_);
@@ -296,6 +305,7 @@ void Client::scheduleRequests() {
     auto serviceTime = std::chrono::duration_cast<std::chrono::microseconds>(
                            endRequestTime - startRequestTime)
                            .count();
+    triggerPTO = false;
 
     if (!gotResponse) {
       LOG(ERROR) << "Connection timeout while waiting for the response. "
@@ -324,16 +334,8 @@ void Client::scheduleRequests() {
         numberOfCompletedRequests);
     experimentManager_->maybeSaveServiceTime(numberOfCompletedRequests,
                                              serviceTime);
-    auto triggerPTO = experimentManager_->maybeTriggerServerMigration(
+    triggerPTO = experimentManager_->maybeTriggerServerMigration(
         numberOfCompletedRequests);
-    if (triggerPTO) {
-      evb->runInEventBaseThreadAndWait([&] {
-        // Artificially trigger a PTO to let the client adopt the
-        // Proactive Explicit migration protocol.
-        quicClient_->onProbeTimeout();
-      });
-    }
-
     maybeUpdateServerManagementAddress();
     auto stop =
         experimentManager_->maybeStopExperiment(numberOfCompletedRequests);
