@@ -170,11 +170,12 @@ bool ExperimentManager::maybeTriggerServerMigration(
     case ExperimentId::FIRST:
       if (numberOfCompletedRequests == 2) {
         handleFirstExperimentTriggerServerMigration();
+        return proactiveExplicit_;
       }
-      return proactiveExplicit_;
+      return false;
     case ExperimentId::SECOND:
       // TODO
-      return proactiveExplicit_;
+      return false;
   }
   LOG(ERROR) << "Unknown experiment ID. Stopping the manager";
   folly::assume_unreachable();
