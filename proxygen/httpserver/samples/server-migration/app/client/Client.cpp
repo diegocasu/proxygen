@@ -274,8 +274,6 @@ void Client::scheduleRequests() {
     VLOG(1) << "Completed requests=" << numberOfCompletedRequests;
     std::chrono::time_point<std::chrono::steady_clock> startRequestTime;
     auto request = requestScheduler_->nextRequest();
-    experimentManager_->maybeNotifyImminentServerMigration(
-        numberOfCompletedRequests);
 
     evb->runInEventBaseThreadAndWait([&] {
       auto transaction = session_->newTransaction(curl_.get());
@@ -322,6 +320,8 @@ void Client::scheduleRequests() {
     ++numberOfCompletedRequests;
     --numberOfOpenableStreams;
 
+    experimentManager_->maybeNotifyImminentServerMigration(
+        numberOfCompletedRequests);
     experimentManager_->maybeSaveServiceTime(numberOfCompletedRequests,
                                              serviceTime);
     auto triggerPTO = experimentManager_->maybeTriggerServerMigration(
