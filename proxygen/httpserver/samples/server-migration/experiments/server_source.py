@@ -133,8 +133,8 @@ def main():
             break
 
         print("New experiment run with migration technique",
-              str(new_migration_technique),
-              "and configuration\n", json.dumps(new_config, indent=4))
+              str(new_migration_technique), "and configuration")
+        print(json.dumps(new_config, indent=4))
 
         # Update the configuration file used by the application.
         update_configuration_file(runc_base, container_name,

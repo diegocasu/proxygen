@@ -74,8 +74,8 @@ def main():
             print("Ending the experiment")
             break
 
-        print("New experiment run with configuration\n",
-              json.dumps(new_config, indent=4))
+        print("New experiment run with configuration")
+        print(json.dumps(new_config, indent=4))
 
         # Update the configuration file used by the application.
         update_configuration_file(runc_base, container_name,
