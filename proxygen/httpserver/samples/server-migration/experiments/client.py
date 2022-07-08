@@ -1,8 +1,6 @@
 import atexit
 import argparse
 
-import pandas as pd
-
 from utils.oci import *
 from utils.client_experiment import ClientExperimentManager
 

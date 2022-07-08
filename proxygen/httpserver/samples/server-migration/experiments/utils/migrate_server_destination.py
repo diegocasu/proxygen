@@ -1,5 +1,4 @@
 import re
-import socket
 import sys
 import json
 import os
