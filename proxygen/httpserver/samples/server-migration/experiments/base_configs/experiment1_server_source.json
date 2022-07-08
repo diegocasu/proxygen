@@ -3,7 +3,6 @@
   "port": 6666,
   "managementPort": 7777,
   "numberOfWorkerThreads": 1,
-
   "serverMigration": {
     "enable": true,
     "explicit": true,
@@ -16,11 +15,9 @@
     "symmetric": false,
     "synchronizedSymmetric": false
   },
-
   "memoryFootprintInflation": {
     "enable": false,
     "additionalBytes": 100000000
   },
-
   "seed": 1
 }
