@@ -9,6 +9,12 @@ ExperimentManager::ExperimentManager(const folly::dynamic &config,
                                      folly::EventBase *evb)
     : experimentId_(
           static_cast<ExperimentId>(config["experiment"]["id"].asInt())),
+      notifyImminentMigrationAfterRequest_(
+          config["experiment"]["notifyImminentMigrationAfterRequest"].asInt()),
+      triggerMigrationAfterRequest_(
+          config["experiment"]["triggerMigrationAfterRequest"].asInt()),
+      shutdownAfterRequest_(
+          config["experiment"]["shutdownAfterRequest"].asInt()),
       serverManagementAddress_(
           config["serverHost"].asString(),
           config["experiment"]["serverManagementPort"].asInt(),
@@ -159,10 +165,10 @@ void ExperimentManager::handleFirstExperimentStopExperiment() {
 }
 
 void ExperimentManager::maybeNotifyImminentServerMigration(
-    const uint64_t &numberOfCompletedRequests) {
+    const int64_t &numberOfCompletedRequests) {
   switch (experimentId_) {
     case ExperimentId::FIRST:
-      if (numberOfCompletedRequests == 1) {
+      if (numberOfCompletedRequests == notifyImminentMigrationAfterRequest_) {
         handleFirstExperimentNotifyImminentServerMigration();
       }
       return;
@@ -175,10 +181,10 @@ void ExperimentManager::maybeNotifyImminentServerMigration(
 }
 
 bool ExperimentManager::maybeTriggerServerMigration(
-    const uint64_t &numberOfCompletedRequests) {
+    const int64_t &numberOfCompletedRequests) {
   switch (experimentId_) {
     case ExperimentId::FIRST:
-      if (numberOfCompletedRequests == 2) {
+      if (numberOfCompletedRequests == triggerMigrationAfterRequest_) {
         handleFirstExperimentTriggerServerMigration();
         return proactiveExplicit_;
       }
@@ -192,10 +198,10 @@ bool ExperimentManager::maybeTriggerServerMigration(
 }
 
 bool ExperimentManager::maybeStopExperiment(
-    const uint64_t &numberOfCompletedRequests) {
+    const int64_t &numberOfCompletedRequests) {
   switch (experimentId_) {
     case ExperimentId::FIRST:
-      if (numberOfCompletedRequests == 4) {
+      if (numberOfCompletedRequests == shutdownAfterRequest_) {
         handleFirstExperimentStopExperiment();
         return true;
       }
@@ -208,11 +214,11 @@ bool ExperimentManager::maybeStopExperiment(
   folly::assume_unreachable();
 }
 
-void ExperimentManager::maybeSaveServiceTime(const uint64_t &requestNumber,
+void ExperimentManager::maybeSaveServiceTime(const int64_t &requestNumber,
                                              const long &serviceTime) {
   switch (experimentId_) {
     case ExperimentId::FIRST:
-      if (requestNumber == 3) {
+      if (requestNumber == triggerMigrationAfterRequest_ + 1) {
         serviceTimes_.push_back(serviceTime);
       }
       return;

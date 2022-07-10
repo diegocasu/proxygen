@@ -270,7 +270,7 @@ void Client::scheduleRequests() {
   auto evb = networkThread_.getEventBase();
   uint64_t numberOfOpenableStreams =
       quicClient_->getNumOpenableBidirectionalStreams();
-  uint64_t numberOfCompletedRequests = 0;
+  int64_t numberOfCompletedRequests = 0;
   bool triggerPTO = false;
 
   while (numberOfOpenableStreams > 0) {

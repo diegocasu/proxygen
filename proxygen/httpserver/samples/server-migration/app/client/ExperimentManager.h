@@ -20,17 +20,17 @@ class ExperimentManager
                              folly::EventBase* evb);
   void start();
   void maybeNotifyImminentServerMigration(
-      const uint64_t& numberOfCompletedRequests);
+      const int64_t& numberOfCompletedRequests);
 
   /**
    * Returns true if a PTO must be artificially triggered on the client side
    * to proactively change the server address, i.e. if the Proactive Explicit
    * protocol must be used to handle the migration.
    */
-  bool maybeTriggerServerMigration(const uint64_t& numberOfCompletedRequests);
+  bool maybeTriggerServerMigration(const int64_t& numberOfCompletedRequests);
 
-  bool maybeStopExperiment(const uint64_t& numberOfCompletedRequests);
-  void maybeSaveServiceTime(const uint64_t& requestNumber,
+  bool maybeStopExperiment(const int64_t& numberOfCompletedRequests);
+  void maybeSaveServiceTime(const int64_t& requestNumber,
                             const long& serviceTime);
   void dumpServiceTimesToFile();
 
@@ -73,7 +73,12 @@ class ExperimentManager
   void handleFirstExperimentTriggerServerMigration();
   void handleFirstExperimentStopExperiment();
 
+  // Information used to drive the experiment.
   ExperimentId experimentId_;
+  int64_t notifyImminentMigrationAfterRequest_;
+  int64_t triggerMigrationAfterRequest_;
+  int64_t shutdownAfterRequest_;
+
   std::unique_ptr<folly::AsyncUDPSocket> socket_;
   std::unique_ptr<folly::IOBuf> readBuffer_;
   folly::fibers::Baton responseBaton_;

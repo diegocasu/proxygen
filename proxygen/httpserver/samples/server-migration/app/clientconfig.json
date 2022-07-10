@@ -80,6 +80,9 @@
     "containerMigrationScriptPort": 8080,
     "serverMigrationProtocol": "proactiveExplicit",
     "serverMigrationHost": "127.0.1.1",
-    "serverMigrationPort": 6666
+    "serverMigrationPort": 6666,
+    "notifyImminentMigrationAfterRequest": 1,
+    "triggerMigrationAfterRequest": 2,
+    "shutdownAfterRequest": 4
   }
 }
