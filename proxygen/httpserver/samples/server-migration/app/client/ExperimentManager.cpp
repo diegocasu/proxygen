@@ -114,6 +114,16 @@ void ExperimentManager::handleFirstExperimentNotifyImminentServerMigration() {
 }
 
 void ExperimentManager::handleFirstExperimentTriggerServerMigration() {
+  // Drain the connection before triggering the server migration, so that all
+  // the control stream frames are acknowledged by the time the server migrates.
+  // Without this drain period, a PTO related to control stream frames could
+  // be triggered by the client way before the next request, altering the
+  // measurement of the service times.
+  VLOG(1) << fmt::format(
+      "Draining connection for {} seconds before triggering server migration",
+      drainPeriod_.count());
+  std::this_thread::sleep_for(drainPeriod_);
+
   VLOG(1) << fmt::format("Sending command={} to migration script={}",
                          migrateCommand_,
                          containerMigrationScriptAddress_.describe());

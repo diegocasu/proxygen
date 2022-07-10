@@ -79,6 +79,7 @@ class ExperimentManager
   folly::fibers::Baton responseBaton_;
   std::chrono::milliseconds responseTimeout_{std::chrono::seconds(1)};
   unsigned int maxNumberOfRetransmissions_{5};
+  std::chrono::seconds drainPeriod_{2};
 
   // Information used to contact the migration management interface
   // of the server to notify an imminent server migration or a shutdown.
