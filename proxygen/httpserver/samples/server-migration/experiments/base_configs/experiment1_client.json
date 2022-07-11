@@ -28,6 +28,9 @@
     "containerMigrationScriptPort": 19888,
     "serverMigrationProtocol": "proactiveExplicit",
     "serverMigrationHost": "172.16.6.25",
-    "serverMigrationPort": 6666
+    "serverMigrationPort": 6666,
+    "notifyImminentMigrationAfterRequest": 9,
+    "triggerMigrationAfterRequest": 10,
+    "shutdownAfterRequest": 12
   }
 }
