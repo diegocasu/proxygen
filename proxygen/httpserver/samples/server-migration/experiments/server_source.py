@@ -37,6 +37,14 @@ def parse_arguments():
                         required=True, type=int, choices=range(1, 5))
     parser.add_argument("--destination_ip", dest="destination_ip",
                         action="store", required=True, type=str)
+
+    compression_parser = parser.add_mutually_exclusive_group(required=True)
+    compression_parser.add_argument("--enable_rsync_compression",
+                                    dest="enable_compression",
+                                    action="store_true")
+    compression_parser.add_argument("--disable_rsync_compression",
+                                    dest="enable_compression",
+                                    action="store_false")
     return parser.parse_args()
 
 
@@ -161,7 +169,7 @@ def main():
                                                  args.destination_ip,
                                                  new_migration_technique.pre,
                                                  new_migration_technique.lazy,
-                                                 enable_compression=True)
+                                                 args.enable_compression)
         experiment_manager.save_migration_measurements(migration_measurements)
 
         # Wait for a message notifying the end of the experiment.
