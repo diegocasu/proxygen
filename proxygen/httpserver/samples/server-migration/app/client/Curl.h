@@ -26,6 +26,7 @@ class Curl
   bool waitForResponse(const std::chrono::milliseconds& timeout);
   std::unique_ptr<proxygen::HTTPMessage> getResponseHeaders();
   std::unique_ptr<folly::IOBuf> getResponseBody();
+  const folly::SocketAddress& getResponseAddress();
 
   // HTTPConnector::Callback methods.
   void connectSuccess(proxygen::HTTPUpstreamSession* session) override;
@@ -53,6 +54,7 @@ class Curl
   proxygen::HTTPTransaction* transaction_{nullptr};
   std::unique_ptr<proxygen::HTTPMessage> responseHeaders_;
   std::unique_ptr<folly::IOBuf> responseBody_;
+  folly::SocketAddress responseAddress_;
   folly::fibers::Baton responseBaton_;
 };
 

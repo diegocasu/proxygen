@@ -64,6 +64,7 @@ void Curl::onBody(std::unique_ptr<folly::IOBuf> chain) noexcept {
 }
 
 void Curl::onEOM() noexcept {
+  responseAddress_ = transaction_->getPeerAddress();
   responseBaton_.post();
 }
 
@@ -94,6 +95,10 @@ std::unique_ptr<proxygen::HTTPMessage> Curl::getResponseHeaders() {
 
 std::unique_ptr<folly::IOBuf> Curl::getResponseBody() {
   return std::move(responseBody_);
+}
+
+const folly::SocketAddress& Curl::getResponseAddress() {
+  return responseAddress_;
 }
 
 bool Curl::waitForResponse(const std::chrono::milliseconds& timeout) {

@@ -322,8 +322,8 @@ void Client::scheduleRequests() {
 
     experimentManager_->maybeNotifyImminentServerMigration(
         numberOfCompletedRequests);
-    experimentManager_->maybeSaveServiceTime(numberOfCompletedRequests,
-                                             serviceTime);
+    experimentManager_->maybeSaveServiceTime(
+        numberOfCompletedRequests, serviceTime, curl_->getResponseAddress());
     triggerPTO = experimentManager_->maybeTriggerServerMigration(
         numberOfCompletedRequests);
     maybeUpdateServerManagementAddress();
@@ -340,6 +340,9 @@ void Client::scheduleRequests() {
 void Client::getAndPrintReceivedResponse() {
   auto responseHeaders = curl_->getResponseHeaders();
   auto responseBody = curl_->getResponseBody();
+  auto& responseAddress = curl_->getResponseAddress();
+
+  VLOG(1) << "Received response from " << responseAddress.describe();
 
   if (responseHeaders) {
     VLOG(1) << "Received response headers" << *responseHeaders;

@@ -100,7 +100,8 @@ void ExperimentManager::waitForResponseOrRetransmit(
   }
 }
 
-void ExperimentManager::handleFirstExperimentNotifyImminentServerMigration() {
+void ExperimentManager::
+    handleFirstAndSecondExperimentNotifyImminentServerMigration() {
   MigrationManagementInterface::Command command;
   command.action =
       MigrationManagementInterface::Action::ON_IMMINENT_SERVER_MIGRATION;
@@ -119,11 +120,11 @@ void ExperimentManager::handleFirstExperimentNotifyImminentServerMigration() {
   waitForResponseOrRetransmit(serverManagementAddress_, jsonCommand);
 }
 
-void ExperimentManager::handleFirstExperimentTriggerServerMigration() {
+void ExperimentManager::handleFirstAndSecondExperimentTriggerServerMigration() {
   // Drain the connection before triggering the server migration, so that all
   // the control stream frames are acknowledged by the time the server migrates.
   // Without this drain period, a PTO related to control stream frames could
-  // be triggered by the client way before the next request, altering the
+  // be triggered by the client before the next request, altering the
   // measurement of the service times.
   VLOG(1) << fmt::format(
       "Draining connection for {} seconds before triggering server migration",
@@ -140,7 +141,7 @@ void ExperimentManager::handleFirstExperimentTriggerServerMigration() {
                               migrateCommand_);
 }
 
-void ExperimentManager::handleFirstExperimentStopExperiment() {
+void ExperimentManager::handleFirstAndSecondExperimentStopExperiment() {
   MigrationManagementInterface::Command command;
   command.action = MigrationManagementInterface::Action::SHUTDOWN;
   auto jsonCommand = managementCommandToJsonString(command);
@@ -168,12 +169,10 @@ void ExperimentManager::maybeNotifyImminentServerMigration(
     const int64_t &numberOfCompletedRequests) {
   switch (experimentId_) {
     case ExperimentId::FIRST:
-      if (numberOfCompletedRequests == notifyImminentMigrationAfterRequest_) {
-        handleFirstExperimentNotifyImminentServerMigration();
-      }
-      return;
     case ExperimentId::SECOND:
-      // TODO
+      if (numberOfCompletedRequests == notifyImminentMigrationAfterRequest_) {
+        handleFirstAndSecondExperimentNotifyImminentServerMigration();
+      }
       return;
   }
   LOG(ERROR) << "Unknown experiment ID. Stopping the manager";
@@ -184,13 +183,11 @@ bool ExperimentManager::maybeTriggerServerMigration(
     const int64_t &numberOfCompletedRequests) {
   switch (experimentId_) {
     case ExperimentId::FIRST:
+    case ExperimentId::SECOND:
       if (numberOfCompletedRequests == triggerMigrationAfterRequest_) {
-        handleFirstExperimentTriggerServerMigration();
+        handleFirstAndSecondExperimentTriggerServerMigration();
         return proactiveExplicit_;
       }
-      return false;
-    case ExperimentId::SECOND:
-      // TODO
       return false;
   }
   LOG(ERROR) << "Unknown experiment ID. Stopping the manager";
@@ -201,29 +198,33 @@ bool ExperimentManager::maybeStopExperiment(
     const int64_t &numberOfCompletedRequests) {
   switch (experimentId_) {
     case ExperimentId::FIRST:
+    case ExperimentId::SECOND:
       if (numberOfCompletedRequests == shutdownAfterRequest_) {
-        handleFirstExperimentStopExperiment();
+        handleFirstAndSecondExperimentStopExperiment();
         return true;
       }
-      return false;
-    case ExperimentId::SECOND:
-      // TODO
       return false;
   }
   LOG(ERROR) << "Unknown experiment ID. Stopping the manager";
   folly::assume_unreachable();
 }
 
-void ExperimentManager::maybeSaveServiceTime(const int64_t &requestNumber,
-                                             const long &serviceTime) {
+void ExperimentManager::maybeSaveServiceTime(
+    const int64_t &requestNumber,
+    const long &serviceTime,
+    const folly::SocketAddress &serverAddress) {
   switch (experimentId_) {
     case ExperimentId::FIRST:
       if (requestNumber == triggerMigrationAfterRequest_ + 1) {
         serviceTimes_.push_back(serviceTime);
+        serverAddresses_.push_back(serverAddress.describe());
       }
       return;
     case ExperimentId::SECOND:
-      // TODO
+      if (requestNumber > triggerMigrationAfterRequest_) {
+        serviceTimes_.push_back(serviceTime);
+        serverAddresses_.push_back(serverAddress.describe());
+      }
       return;
   }
   LOG(ERROR) << "Unknown experiment ID. Stopping the manager";
@@ -236,9 +237,15 @@ void ExperimentManager::dumpServiceTimesToFile() {
     serviceTimes.push_back(time);
   }
 
+  folly::dynamic serverAddresses = folly::dynamic::array();
+  for (const auto &address : serverAddresses_) {
+    serverAddresses.push_back(address);
+  }
+
   folly::dynamic dynamic = folly::dynamic::object();
   dynamic["experiment"] = static_cast<int64_t>(experimentId_);
   dynamic["serviceTimes"] = serviceTimes;
+  dynamic["serverAddresses"] = serverAddresses;
 
   auto dynamicJson = folly::toJson(dynamic);
   auto success = folly::writeFile(dynamicJson, serviceTimesFile_.data());

@@ -31,7 +31,8 @@ class ExperimentManager
 
   bool maybeStopExperiment(const int64_t& numberOfCompletedRequests);
   void maybeSaveServiceTime(const int64_t& requestNumber,
-                            const long& serviceTime);
+                            const long& serviceTime,
+                            const folly::SocketAddress& serverAddress);
   void dumpServiceTimesToFile();
 
   /**
@@ -69,9 +70,9 @@ class ExperimentManager
 
   void waitForResponseOrRetransmit(const folly::SocketAddress& destination,
                                    const std::string& message);
-  void handleFirstExperimentNotifyImminentServerMigration();
-  void handleFirstExperimentTriggerServerMigration();
-  void handleFirstExperimentStopExperiment();
+  void handleFirstAndSecondExperimentNotifyImminentServerMigration();
+  void handleFirstAndSecondExperimentTriggerServerMigration();
+  void handleFirstAndSecondExperimentStopExperiment();
 
   // Information used to drive the experiment.
   ExperimentId experimentId_;
@@ -104,6 +105,7 @@ class ExperimentManager
 
   // Significant service times measured during the experiment, in microseconds.
   std::vector<long> serviceTimes_;
+  std::vector<std::string> serverAddresses_;
   std::string serviceTimesFile_{"service_times.json"};
 };
 
