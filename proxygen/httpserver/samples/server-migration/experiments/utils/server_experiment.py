@@ -212,7 +212,7 @@ class ServerExperimentManager:
         self._results["repetition"].append(self._current_repetition)
         self._results["seed"].append(self._current_seed)
         self._results["migrationTechnique"] \
-            .append(str(self._migration_technique.name).lower())
+            .append(str(self._current_migration_technique.name).lower())
         self._results["protocol"].append(self._current_migration_protocol)
         self._results["preDumpTime [s]"].append(migration_times["preDumpTime"])
         self._results["preDumpTxTime [s]"] \
