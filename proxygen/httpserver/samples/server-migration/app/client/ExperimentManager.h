@@ -107,6 +107,11 @@ class ExperimentManager
   std::vector<long> serviceTimes_;
   std::vector<std::string> serverAddresses_;
   std::string serviceTimesFile_{"service_times.json"};
+
+  // Variables used during the second experiment to detect when
+  // the first response from the new server address is received.
+  folly::Optional<folly::SocketAddress> secondExperimentOriginalServerAddress_;
+  bool firstResponseFromNewServerAddressReceived_{false};
 };
 
 } // namespace quic::samples::servermigration

@@ -221,7 +221,16 @@ void ExperimentManager::maybeSaveServiceTime(
       }
       return;
     case ExperimentId::SECOND:
-      if (requestNumber > triggerMigrationAfterRequest_) {
+      CHECK_GT(triggerMigrationAfterRequest_, 1);
+      if (requestNumber == 1) {
+        secondExperimentOriginalServerAddress_ = serverAddress;
+        return;
+      }
+      if (requestNumber > triggerMigrationAfterRequest_ &&
+          !firstResponseFromNewServerAddressReceived_) {
+        if (secondExperimentOriginalServerAddress_ != serverAddress) {
+          firstResponseFromNewServerAddressReceived_ = true;
+        }
         serviceTimes_.push_back(serviceTime);
         serverAddresses_.push_back(serverAddress.describe());
       }
