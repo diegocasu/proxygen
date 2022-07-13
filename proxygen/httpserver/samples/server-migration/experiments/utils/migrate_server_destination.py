@@ -138,7 +138,7 @@ def _handle_server_migration(conn, addr):
 
         os.chdir(old_cwd)
         restore_times = {"restoreTime": restore_time,
-                         "lazyPagesTransferTime": lazy_pages_transfer_time,
+                         "lazyPagesTxTime": lazy_pages_transfer_time,
                          "numberOfLazyPages": n_lazy_pages}
         return restore_times
     except Exception as e:

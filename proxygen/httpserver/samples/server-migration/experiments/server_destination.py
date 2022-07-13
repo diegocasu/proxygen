@@ -102,8 +102,8 @@ def save_restore_times(total_restore_times, restore_times, experiment_manager):
     total_restore_times["repetition"].append(
         experiment_manager._current_repetition)
     total_restore_times["restoreTime [s]"].append(restore_times["restoreTime"])
-    total_restore_times["lazyPagesTransferTime [s]"] \
-        .append(restore_times["lazyPagesTransferTime"])
+    total_restore_times["lazyPagesTxTime [s]"] \
+        .append(restore_times["lazyPagesTxTime"])
     total_restore_times["numberOfLazyPages"] \
         .append(restore_times["numberOfLazyPages"])
 
@@ -135,7 +135,7 @@ def main():
     # obtained merging the data with the results obtained on the other nodes.
     total_restore_times = {"experiment": [], "run": [], "repetition": [],
                            "restoreTime [s]": [],
-                           "lazyPagesTransferTime [s]": [],
+                           "lazyPagesTxTime [s]": [],
                            "numberOfLazyPages": []}
 
     # An experiment manager is not strictly needed here, since configuration
