@@ -22,7 +22,7 @@ def parse_arguments():
                         dest="rebuild_image", action="store_true",
                         default=False)
     parser.add_argument("--experiment", dest="experiment", action="store",
-                        required=True, type=int, choices=range(1, 5))
+                        required=True, type=int, choices=range(1, 3))
     return parser.parse_args()
 
 

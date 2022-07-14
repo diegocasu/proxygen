@@ -34,7 +34,7 @@ def parse_arguments():
                         dest="rebuild_image", action="store_true",
                         default=False)
     parser.add_argument("--experiment", dest="experiment", action="store",
-                        required=True, type=int, choices=range(1, 5))
+                        required=True, type=int, choices=range(1, 3))
     parser.add_argument("--destination_ip", dest="destination_ip",
                         action="store", required=True, type=str)
 

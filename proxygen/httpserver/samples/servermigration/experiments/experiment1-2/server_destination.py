@@ -38,7 +38,7 @@ def parse_arguments():
     parser.add_argument("--management_port", dest="management_port",
                         action="store", type=int, required=True)
     parser.add_argument("--experiment", dest="experiment", action="store",
-                        required=True, type=int, choices=range(1, 5))
+                        required=True, type=int, choices=range(1, 3))
     return parser.parse_args()
 
 
