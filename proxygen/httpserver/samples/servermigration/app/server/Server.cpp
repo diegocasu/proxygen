@@ -173,6 +173,7 @@ void Server::start() {
   migrationManagement_->start();
   evb_.loopForever();
   LOG(INFO) << "Stopping the server";
+  migrationManagement_->dumpMigrationNotificationTimeToFile();
 }
 
 } // namespace quic::samples::servermigration

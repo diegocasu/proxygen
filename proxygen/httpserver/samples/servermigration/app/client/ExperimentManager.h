@@ -65,14 +65,20 @@ class ExperimentManager
     // depending on both the QUIC migration protocol and the container
     // migration.
     SECOND = 2,
-    MAX = SECOND
+
+    // Experiment #3: measure migration notification time depending on
+    // the number of clients and the migration protocol.
+    THIRD = 3,
+
+    MAX = THIRD,
   };
 
   void waitForResponseOrRetransmit(const folly::SocketAddress& destination,
                                    const std::string& message);
-  void handleFirstAndSecondExperimentNotifyImminentServerMigration();
+  void handleFirstSecondThirdExperimentNotifyImminentServerMigration();
   void handleFirstAndSecondExperimentTriggerServerMigration();
   void handleFirstAndSecondExperimentStopExperiment();
+  void handleThirdExperimentStopExperiment();
 
   // Information used to drive the experiment.
   ExperimentId experimentId_;

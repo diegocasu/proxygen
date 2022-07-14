@@ -101,7 +101,7 @@ void ExperimentManager::waitForResponseOrRetransmit(
 }
 
 void ExperimentManager::
-    handleFirstAndSecondExperimentNotifyImminentServerMigration() {
+    handleFirstSecondThirdExperimentNotifyImminentServerMigration() {
   MigrationManagementInterface::Command command;
   command.action =
       MigrationManagementInterface::Action::ON_IMMINENT_SERVER_MIGRATION;
@@ -165,13 +165,36 @@ void ExperimentManager::handleFirstAndSecondExperimentStopExperiment() {
   waitForResponseOrRetransmit(containerMigrationScriptAddress_, jsonCommand);
 }
 
+void ExperimentManager::handleThirdExperimentStopExperiment() {
+  MigrationManagementInterface::Command command;
+  command.action = MigrationManagementInterface::Action::SHUTDOWN;
+  auto jsonCommand = managementCommandToJsonString(command);
+
+  VLOG(1) << fmt::format("Sending command={} to server management={}",
+                         jsonCommand,
+                         serverManagementAddress_.describe());
+  responseBaton_.reset();
+  socket_->write(serverManagementAddress_,
+                 folly::IOBuf::copyBuffer(jsonCommand));
+  waitForResponseOrRetransmit(serverManagementAddress_, jsonCommand);
+}
+
 void ExperimentManager::maybeNotifyImminentServerMigration(
     const int64_t &numberOfCompletedRequests) {
   switch (experimentId_) {
     case ExperimentId::FIRST:
     case ExperimentId::SECOND:
       if (numberOfCompletedRequests == notifyImminentMigrationAfterRequest_) {
-        handleFirstAndSecondExperimentNotifyImminentServerMigration();
+        handleFirstSecondThirdExperimentNotifyImminentServerMigration();
+      }
+      return;
+    case ExperimentId::THIRD:
+      // The third experiment comprises multiple clients, thus notify migration
+      // only if this is the last client. The latter is the only one with a
+      // value of notifyImminentMigrationAfterRequest_ greater than zero.
+      if (notifyImminentMigrationAfterRequest_ > 0 &&
+          numberOfCompletedRequests == notifyImminentMigrationAfterRequest_) {
+        handleFirstSecondThirdExperimentNotifyImminentServerMigration();
       }
       return;
   }
@@ -189,6 +212,8 @@ bool ExperimentManager::maybeTriggerServerMigration(
         return proactiveExplicit_;
       }
       return false;
+    case ExperimentId::THIRD:
+      return false;
   }
   LOG(ERROR) << "Unknown experiment ID. Stopping the manager";
   folly::assume_unreachable();
@@ -201,6 +226,16 @@ bool ExperimentManager::maybeStopExperiment(
     case ExperimentId::SECOND:
       if (numberOfCompletedRequests == shutdownAfterRequest_) {
         handleFirstAndSecondExperimentStopExperiment();
+        return true;
+      }
+      return false;
+    case ExperimentId::THIRD:
+      // The third experiment comprises multiple clients, thus send the shutdown
+      // only if this is the last client. The latter is the only one with a
+      // value of notifyImminentMigrationAfterRequest_ greater than zero.
+      if (notifyImminentMigrationAfterRequest_ > 0 &&
+          numberOfCompletedRequests == shutdownAfterRequest_) {
+        handleThirdExperimentStopExperiment();
         return true;
       }
       return false;
@@ -235,12 +270,18 @@ void ExperimentManager::maybeSaveServiceTime(
         serverAddresses_.push_back(serverAddress.describe());
       }
       return;
+    case ExperimentId::THIRD:
+      return;
   }
   LOG(ERROR) << "Unknown experiment ID. Stopping the manager";
   folly::assume_unreachable();
 }
 
 void ExperimentManager::dumpServiceTimesToFile() {
+  if (experimentId_ == ExperimentId::THIRD) {
+    return;
+  }
+
   folly::dynamic serviceTimes = folly::dynamic::array();
   for (const auto &time : serviceTimes_) {
     serviceTimes.push_back(time);

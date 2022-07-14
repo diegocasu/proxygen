@@ -1,3 +1,4 @@
+#include <folly/FileUtil.h>
 #include <proxygen/httpserver/samples/servermigration/app/common/Utils.h>
 #include <proxygen/httpserver/samples/servermigration/app/server/MigrationManagementInterface.h>
 
@@ -126,6 +127,7 @@ void MigrationManagementInterface::onServerMigrationReady(
   ++numberOfTransportsReady_;
   if (numberOfTransportsReady_ == transports_.size()) {
     LOG(INFO) << "Server ready for migration";
+    migrationReadyTime_ = std::chrono::steady_clock::now();
     transportsReady_ = true;
   }
 }
@@ -204,6 +206,7 @@ void MigrationManagementInterface::handleOnImminentServerMigrationCommand(
     const folly::SocketAddress &client,
     const MigrationManagementInterface::Command &command) {
   if (!migrationInProgress_) {
+    migrationNotificationReceptionTime_ = std::chrono::steady_clock::now();
     migrationInProgress_ = true;
     if (command.protocol == ServerMigrationProtocol::EXPLICIT) {
       QuicIPAddress migrationAddress(command.address.value());
@@ -283,6 +286,26 @@ void MigrationManagementInterface::onDataAvailable(
     LOG(ERROR) << "Ignoring command: " << exception.what();
     auto response = std::string("Bad request. Error: ") + exception.what();
     socket_->write(client, folly::IOBuf::copyBuffer(response));
+  }
+}
+
+void MigrationManagementInterface::dumpMigrationNotificationTimeToFile() {
+  folly::dynamic dynamic = folly::dynamic::object();
+  if (migrationReadyTime_ && migrationNotificationReceptionTime_) {
+    auto migrationNotificationTime =
+        std::chrono::duration_cast<std::chrono::microseconds>(
+            migrationReadyTime_.value() -
+            migrationNotificationReceptionTime_.value())
+            .count();
+    dynamic["migrationNotificationTime"] = migrationNotificationTime;
+  } else {
+    dynamic["migrationNotificationTime"] = nullptr;
+  }
+  auto dynamicJson = folly::toJson(dynamic);
+  auto success =
+      folly::writeFile(dynamicJson, migrationNotificationTimeFile_.data());
+  if (!success) {
+    LOG(ERROR) << "Impossible to dump the migration notification time to file";
   }
 }
 
