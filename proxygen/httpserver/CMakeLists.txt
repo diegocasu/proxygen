@@ -157,21 +157,21 @@ if (BUILD_QUIC AND BUILD_SAMPLES)
   )
 
   add_executable(mhq
-      samples/server-migration/app/main.cpp
-      samples/server-migration/app/common/Utils.cpp
-      samples/server-migration/app/server/Server.cpp
-      samples/server-migration/app/server/TransportFactory.cpp
-      samples/server-migration/app/server/MigrationManagementInterface.cpp
-      samples/server-migration/app/server/SessionController.cpp
-      samples/server-migration/app/server/HandlerDispatcher.cpp
-      samples/server-migration/app/server/handler/BaseHandler.cpp
-      samples/server-migration/app/server/handler/EchoHandler.cpp
-      samples/server-migration/app/server/handler/DistributionHandler.cpp
-      samples/server-migration/app/client/Client.cpp
-      samples/server-migration/app/client/RandomPoolMigrationAddressScheduler.cpp
-      samples/server-migration/app/client/Curl.cpp
-      samples/server-migration/app/client/RequestScheduler.cpp
-      samples/server-migration/app/client/ExperimentManager.cpp
+      samples/servermigration/app/main.cpp
+      samples/servermigration/app/common/Utils.cpp
+      samples/servermigration/app/server/Server.cpp
+      samples/servermigration/app/server/TransportFactory.cpp
+      samples/servermigration/app/server/MigrationManagementInterface.cpp
+      samples/servermigration/app/server/SessionController.cpp
+      samples/servermigration/app/server/HandlerDispatcher.cpp
+      samples/servermigration/app/server/handler/BaseHandler.cpp
+      samples/servermigration/app/server/handler/EchoHandler.cpp
+      samples/servermigration/app/server/handler/DistributionHandler.cpp
+      samples/servermigration/app/client/Client.cpp
+      samples/servermigration/app/client/RandomPoolMigrationAddressScheduler.cpp
+      samples/servermigration/app/client/Curl.cpp
+      samples/servermigration/app/client/RequestScheduler.cpp
+      samples/servermigration/app/client/ExperimentManager.cpp
   )
   target_compile_options(
       mhq
