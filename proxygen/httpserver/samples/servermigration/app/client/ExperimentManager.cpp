@@ -230,12 +230,13 @@ bool ExperimentManager::maybeStopExperiment(
       }
       return false;
     case ExperimentId::THIRD:
-      // The third experiment comprises multiple clients, thus send the shutdown
-      // only if this is the last client. The latter is the only one with a
-      // value of notifyImminentMigrationAfterRequest_ greater than zero.
-      if (notifyImminentMigrationAfterRequest_ > 0 &&
-          numberOfCompletedRequests == shutdownAfterRequest_) {
-        handleThirdExperimentStopExperiment();
+      if (numberOfCompletedRequests == shutdownAfterRequest_) {
+        // The third experiment comprises multiple clients, thus send the shutdown
+        // only if this is the last client. The latter is the only one with a
+        // value of notifyImminentMigrationAfterRequest_ greater than zero.
+        if (notifyImminentMigrationAfterRequest_ > 0) {
+          handleThirdExperimentStopExperiment();
+        }
         return true;
       }
       return false;
