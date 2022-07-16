@@ -67,7 +67,8 @@ class ServerExperimentManager:
                          "seed": [], "migrationTechnique": [], "protocol": [],
                          "preDumpTime [s]": [], "preDumpTxTime [s]": [],
                          "dumpTime [s]": [], "dumpTxTime [s]": [],
-                         "dumpSize": [], "preDumpSize": []}
+                         "dumpSize": [], "preDumpSize": [],
+                         "compressionEnabled": []}
         self._results_file = "experiment1_migration_times.csv"
 
     def _initialize_second_experiment(self):
@@ -86,7 +87,8 @@ class ServerExperimentManager:
                          "seed": [], "migrationTechnique": [], "protocol": [],
                          "preDumpTime [s]": [], "preDumpTxTime [s]": [],
                          "dumpTime [s]": [], "dumpTxTime [s]": [],
-                         "dumpSize": [], "preDumpSize": []}
+                         "dumpSize": [], "preDumpSize": [],
+                         "compressionEnabled": []}
         self._results_file = "experiment2_migration_times.csv"
 
     def _get_new_config_first_experiment(self):
@@ -190,7 +192,8 @@ class ServerExperimentManager:
 
         return None, None
 
-    def _save_migration_measurements_first_experiment(self, migration_times):
+    def _save_migration_measurements_first_experiment(self, migration_times,
+                                                      compression_enabled):
         self._results["experiment"].append(self._id)
         self._results["run"].append(self._current_run)
         self._results["repetition"].append(self._current_repetition)
@@ -205,8 +208,10 @@ class ServerExperimentManager:
         self._results["dumpTxTime [s]"].append(migration_times["dumpTxTime"])
         self._results["dumpSize"].append(migration_times["dumpSize"])
         self._results["preDumpSize"].append(migration_times["preDumpSize"])
+        self._results["compressionEnabled"].append(compression_enabled)
 
-    def _save_migration_measurements_second_experiment(self, migration_times):
+    def _save_migration_measurements_second_experiment(self, migration_times,
+                                                       compression_enabled):
         self._results["experiment"].append(self._id)
         self._results["run"].append(self._current_run)
         self._results["repetition"].append(self._current_repetition)
@@ -221,12 +226,15 @@ class ServerExperimentManager:
         self._results["dumpTxTime [s]"].append(migration_times["dumpTxTime"])
         self._results["dumpSize"].append(migration_times["dumpSize"])
         self._results["preDumpSize"].append(migration_times["preDumpSize"])
+        self._results["compressionEnabled"].append(compression_enabled)
 
-    def save_migration_measurements(self, migration_times):
+    def save_migration_measurements(self, migration_times, compression_enabled):
         if self._id == 1:
-            self._save_migration_measurements_first_experiment(migration_times)
+            self._save_migration_measurements_first_experiment(migration_times,
+                                                               compression_enabled)
         elif self._id == 2:
-            self._save_migration_measurements_second_experiment(migration_times)
+            self._save_migration_measurements_second_experiment(migration_times,
+                                                                compression_enabled)
 
     def dump_experiment_results_to_file(self):
         df = pd.DataFrame(self._results)

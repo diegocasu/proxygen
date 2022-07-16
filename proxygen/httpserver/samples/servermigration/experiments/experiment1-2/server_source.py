@@ -170,7 +170,8 @@ def main():
                                                  new_migration_technique.pre,
                                                  new_migration_technique.lazy,
                                                  args.enable_compression)
-        experiment_manager.save_migration_measurements(migration_measurements)
+        experiment_manager.save_migration_measurements(migration_measurements,
+                                                       args.enable_compression)
 
         # Wait for a message notifying the end of the experiment.
         wait_for_end_command(command_socket)
