@@ -29,16 +29,25 @@ def _parse_lazy_pages_measurements(output_file):
     regex_transferred_pages = "\([0-9]+\/[0-9]+\)"  # Matches "(NUMBER/NUMBER)"
     regex_time = "\([0-9]+\.[0-9]+\)"  # Matches "(NUMBER.NUMBER)"
 
+    transfer_start_time = None
+    transfer_end_time = None
     with open(output_file, "r") as lazy_pages_output:
         for line in lazy_pages_output:
-            if "UFFD transferred pages" in line:
+            if "uffd: Received PID:" in line:
+                result_time = re.search(regex_time, line).group(0)
+                transfer_start_time = float(result_time[1:-1])
+            elif "UFFD transferred pages" in line:
                 result_pages = re.search(regex_transferred_pages, line).group(0)
                 n_pages = int(result_pages.split("/")[0][1:])
 
                 result_time = re.search(regex_time, line).group(0)
-                lazy_pages_transfer_time = float(result_time[1:-1])
+                transfer_end_time = float(result_time[1:-1])
 
-                return n_pages, lazy_pages_transfer_time
+        if transfer_start_time is not None and transfer_end_time is not None:
+            lazy_pages_transfer_time = transfer_end_time - transfer_start_time
+            return n_pages, lazy_pages_transfer_time, transfer_end_time
+
+        return None, None, None
 
 
 def _handle_server_migration(conn, addr):
@@ -124,13 +133,14 @@ def _handle_server_migration(conn, addr):
         if ret != 0:
             _error()
 
-        lazy_pages_transfer_time = None
+        lazy_pages_tx_time = None
+        lazy_pages_tx_end_time = None
         n_lazy_pages = None
         if lazy_pages_proc is not None:
             ret = lazy_pages_proc.wait()
             if ret == 0:
                 print("Lazy-pages server terminated correctly")
-                n_lazy_pages, lazy_pages_transfer_time = \
+                n_lazy_pages, lazy_pages_tx_time, lazy_pages_tx_end_time = \
                     _parse_lazy_pages_measurements(lazy_pages_output_file)
             else:
                 print("Lazy-pages server failed")
@@ -138,7 +148,8 @@ def _handle_server_migration(conn, addr):
 
         os.chdir(old_cwd)
         restore_times = {"restoreTime": restore_time,
-                         "lazyPagesTxTime": lazy_pages_transfer_time,
+                         "lazyPagesTxTime": lazy_pages_tx_time,
+                         "lazyPagesTxEndTime": lazy_pages_tx_end_time,
                          "numberOfLazyPages": n_lazy_pages}
         return restore_times
     except Exception as e:
@@ -150,11 +161,12 @@ def wait_for_server_migration(migration_socket):
     """
     Wait for and handle a server migration.
     :param migration_socket:  the socket dedicated to server migration.
-    :return:                  a dictionary of 3 elements, containing the restore
-                              time, the lazy pages transfer time and the number
-                              of lazy pages that were transferred. Depending on
-                              the chosen technique, the lazy pages quantities
-                              could be equal to None.
+    :return:                  a dictionary of 4 elements, containing the restore
+                              time, the lazy pages transfer time, the lazy pages
+                              transfer end time and the number of lazy pages
+                              that were transferred. Depending on the chosen
+                              technique, the lazy pages quantities could be
+                              equal to None.
     """
     print("Waiting for server migration")
     conn, addr = migration_socket.accept()

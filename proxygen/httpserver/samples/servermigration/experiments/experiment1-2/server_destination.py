@@ -104,6 +104,8 @@ def save_restore_times(total_restore_times, restore_times, experiment_manager):
     total_restore_times["restoreTime [s]"].append(restore_times["restoreTime"])
     total_restore_times["lazyPagesTxTime [s]"] \
         .append(restore_times["lazyPagesTxTime"])
+    total_restore_times["lazyPagesTxEndTime [s]"] \
+        .append(restore_times["lazyPagesTxEndTime"])
     total_restore_times["numberOfLazyPages"] \
         .append(restore_times["numberOfLazyPages"])
 
@@ -134,9 +136,9 @@ def main():
     # Information regarding the protocol, migration technique, etc. will be
     # obtained merging the data with the results obtained on the other nodes.
     total_restore_times = {"experiment": [], "run": [], "repetition": [],
-                           "restoreTime [s]": [],
+                           "restoreTime [s]": [], "numberOfLazyPages": [],
                            "lazyPagesTxTime [s]": [],
-                           "numberOfLazyPages": []}
+                           "lazyPagesTxEndTime [s]": []}
 
     # An experiment manager is not strictly needed here, since configuration
     # files are not needed when being the destination node of a migration.
