@@ -53,7 +53,8 @@ def _pre_dump(base_path, container_name):
     return pre_dump_time
 
 
-def _xfer_pre_dump(parent_path, destination_ip, base_path, rsync_opts):
+def _xfer_pre_dump(parent_path, destination_ip, base_path, rsync_opts,
+                   rsync_pre_dump_output_file):
     # Transfer the previously created pre-dump using rsync.
     cmd = "du -hs {}".format(parent_path)
     cmd_output = subprocess.run(cmd, stdout=subprocess.PIPE,
@@ -62,9 +63,10 @@ def _xfer_pre_dump(parent_path, destination_ip, base_path, rsync_opts):
     print("PRE-DUMP size:", pre_dump_size)
 
     print("Transferring PRE-DUMP to", destination_ip)
-    cmd = "time -p rsync {} --stats {} {}:{}/" \
-        .format(rsync_opts, parent_path, destination_ip, base_path)
-
+    cmd = "(time -p rsync {} --stats {} {}:{}/) 2>&1 | " \
+          "sudo tee {} > /dev/null".format(rsync_opts, parent_path,
+                                           destination_ip, base_path,
+                                           rsync_pre_dump_output_file)
     start = time.time()
     ret = os.system(cmd)
     end = time.time()
@@ -133,7 +135,8 @@ def _real_dump(base_path, container_name, precopy, postcopy):
     return dump_time
 
 
-def _xfer_final(image_path, destination_ip, base_path, rsync_opts):
+def _xfer_final(image_path, destination_ip, base_path, rsync_opts,
+                rsync_dump_output_file):
     # Transfer the previously created dump using rsync.
     cmd = "du -hs {}".format(image_path)
     cmd_output = subprocess.run(cmd, stdout=subprocess.PIPE,
@@ -142,8 +145,10 @@ def _xfer_final(image_path, destination_ip, base_path, rsync_opts):
     print("DUMP size:", dump_size)
 
     print("Transferring DUMP to", destination_ip)
-    cmd = "time -p rsync {} --stats {} {}:{}/".format(rsync_opts, image_path,
-                                                      destination_ip, base_path)
+    cmd = "(time -p rsync {} --stats {} {}:{}/) 2>&1 | " \
+          "sudo tee {} > /dev/null".format(rsync_opts, image_path,
+                                           destination_ip, base_path,
+                                           rsync_dump_output_file)
     start = time.time()
     ret = os.system(cmd)
     end = time.time()
@@ -155,22 +160,74 @@ def _xfer_final(image_path, destination_ip, base_path, rsync_opts):
     return dump_transfer_time, dump_size
 
 
+def parse_rsync_output_files(rsync_pre_dump_output_file, rsync_dump_output_file,
+                             migration_times, pre):
+    def parse_file(file):
+        total_file_size = None
+        total_bytes_sent = None
+        transfer_rate = None
+        compression_speedup = None
+
+        for line in file:
+            if "Total transferred file size:" in line:
+                total_file_size = line.split(": ")[1].split(" ")[0].rstrip("\n")
+            elif "Total bytes sent:" in line:
+                total_bytes_sent = line.split(": ")[1].split(" ")[0] \
+                    .rstrip("\n")
+            elif "bytes/sec" in line:
+                transfer_rate = line.split("  ")[2].rstrip("\n")
+            elif "speedup" in line:
+                compression_speedup = line.split("  ")[1].split(" ")[2] \
+                    .rstrip("\n")
+
+        return total_file_size, total_bytes_sent, transfer_rate, \
+               compression_speedup
+
+    if pre:
+        with open(rsync_pre_dump_output_file, "r") as pre_dump_output_file:
+            migration_times["rsyncPreDumpTotalFileSize"], \
+            migration_times["rsyncPreDumpTotalBytesSent"], \
+            migration_times["rsyncPreDumpTransferRate"], \
+            migration_times["rsyncPreDumpCompressionSpeedup"] = \
+                parse_file(pre_dump_output_file)
+
+    with open(rsync_dump_output_file, "r") as dump_output_file:
+        migration_times["rsyncDumpTotalFileSize"], \
+        migration_times["rsyncDumpTotalBytesSent"], \
+        migration_times["rsyncDumpTransferRate"], \
+        migration_times["rsyncDumpCompressionSpeedup"] = \
+            parse_file(dump_output_file)
+
+
 def _migrate(container_name, destination_ip, pre, lazy, base_path, rsync_opts):
     image_path = base_path + "/image"
     parent_path = base_path + "/parent"
+    rsync_pre_dump_output_file = "rsync_pre_dump_output.txt"
+    rsync_dump_output_file = "rsync_dump_output.txt"
+
     migration_times = {"preDumpTime": None, "preDumpTxTime": None,
                        "dumpTime": None, "dumpTxTime": None,
-                       "dumpSize": None, "preDumpSize": None}
+                       "dumpSize": None, "preDumpSize": None,
+                       "rsyncPreDumpTotalFileSize": None,
+                       "rsyncPreDumpTotalBytesSent": None,
+                       "rsyncPreDumpTransferRate": None,
+                       "rsyncPreDumpCompressionSpeedup": None,
+                       "rsyncDumpTotalFileSize": None,
+                       "rsyncDumpTotalBytesSent": None,
+                       "rsyncDumpTransferRate": None,
+                       "rsyncDumpCompressionSpeedup": None}
 
     if pre:
         migration_times["preDumpTime"] = _pre_dump(base_path, container_name)
         migration_times["preDumpTxTime"], migration_times["preDumpSize"] = \
-            _xfer_pre_dump(parent_path, destination_ip, base_path, rsync_opts)
+            _xfer_pre_dump(parent_path, destination_ip, base_path, rsync_opts,
+                           rsync_pre_dump_output_file)
 
     migration_times["dumpTime"] = _real_dump(base_path, container_name,
                                              pre, lazy)
     migration_times["dumpTxTime"], migration_times["dumpSize"] = \
-        _xfer_final(image_path, destination_ip, base_path, rsync_opts)
+        _xfer_final(image_path, destination_ip, base_path, rsync_opts,
+                    rsync_dump_output_file)
 
     # Connect to the migration server running on
     # the destination to send the restore command.
@@ -187,7 +244,6 @@ def _migrate(container_name, destination_ip, pre, lazy, base_path, rsync_opts):
     while True:
         input_ready, output_ready, except_ready = select.select(read_list, [],
                                                                 [], 10)
-
         # If after 10 seconds there is nothing to read, then exit.
         if not input_ready:
             return None
@@ -198,6 +254,12 @@ def _migrate(container_name, destination_ip, pre, lazy, base_path, rsync_opts):
             print(decoded_answer)
             if "failed" in decoded_answer:
                 _error()
+
+        parse_rsync_output_files(rsync_pre_dump_output_file,
+                                 rsync_dump_output_file, migration_times, pre)
+        if pre:
+            os.remove(rsync_pre_dump_output_file)
+        os.remove(rsync_dump_output_file)
 
         return migration_times
 
@@ -220,10 +282,11 @@ def start_migration(runc_base, container_name, destination_ip, pre, lazy,
     :param lazy:                flag used to determine the migration technique
     :param enable_compression:  True if rsync compression must be enabled,
                                 False otherwise.
-    :return:                    a dictionary of 6 elements, containing the
+    :return:                    a dictionary of 14 elements, containing the
                                 pre-dump time, the pre-dump transfer time, the
-                                dump time, the dump transfer time, the dump size
-                                and the pre-dump size.
+                                dump time, the dump transfer time, the dump size,
+                                the pre-dump size and statistics associated to
+                                the rsync transfer.
                                 Depending on the chosen technique, the pre-dump
                                 elements could be equal to None.
     """

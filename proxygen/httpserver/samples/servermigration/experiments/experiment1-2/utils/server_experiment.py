@@ -68,7 +68,15 @@ class ServerExperimentManager:
                          "preDumpTime [s]": [], "preDumpTxTime [s]": [],
                          "dumpTime [s]": [], "dumpTxTime [s]": [],
                          "dumpSize": [], "preDumpSize": [],
-                         "compressionEnabled": []}
+                         "compressionEnabled": [],
+                         "rsyncPreDumpTotalFileSize": [],
+                         "rsyncPreDumpTotalBytesSent": [],
+                         "rsyncPreDumpTransferRate": [],
+                         "rsyncPreDumpCompressionSpeedup": [],
+                         "rsyncDumpTotalFileSize": [],
+                         "rsyncDumpTotalBytesSent": [],
+                         "rsyncDumpTransferRate": [],
+                         "rsyncDumpCompressionSpeedup": []}
         self._results_file = "experiment1_migration_times.csv"
 
     def _initialize_second_experiment(self):
@@ -88,7 +96,15 @@ class ServerExperimentManager:
                          "preDumpTime [s]": [], "preDumpTxTime [s]": [],
                          "dumpTime [s]": [], "dumpTxTime [s]": [],
                          "dumpSize": [], "preDumpSize": [],
-                         "compressionEnabled": []}
+                         "compressionEnabled": [],
+                         "rsyncPreDumpTotalFileSize": [],
+                         "rsyncPreDumpTotalBytesSent": [],
+                         "rsyncPreDumpTransferRate": [],
+                         "rsyncPreDumpCompressionSpeedup": [],
+                         "rsyncDumpTotalFileSize": [],
+                         "rsyncDumpTotalBytesSent": [],
+                         "rsyncDumpTransferRate": [],
+                         "rsyncDumpCompressionSpeedup": []}
         self._results_file = "experiment2_migration_times.csv"
 
     def _get_new_config_first_experiment(self):
@@ -209,6 +225,22 @@ class ServerExperimentManager:
         self._results["dumpSize"].append(migration_times["dumpSize"])
         self._results["preDumpSize"].append(migration_times["preDumpSize"])
         self._results["compressionEnabled"].append(compression_enabled)
+        self._results["rsyncPreDumpTotalFileSize"] \
+            .append(migration_times["rsyncPreDumpTotalFileSize"])
+        self._results["rsyncPreDumpTotalBytesSent"] \
+            .append(migration_times["rsyncPreDumpTotalBytesSent"])
+        self._results["rsyncPreDumpTransferRate"] \
+            .append(migration_times["rsyncPreDumpTransferRate"])
+        self._results["rsyncPreDumpCompressionSpeedup"] \
+            .append(migration_times["rsyncPreDumpCompressionSpeedup"])
+        self._results["rsyncDumpTotalFileSize"] \
+            .append(migration_times["rsyncDumpTotalFileSize"])
+        self._results["rsyncDumpTotalBytesSent"] \
+            .append(migration_times["rsyncDumpTotalBytesSent"])
+        self._results["rsyncDumpTransferRate"] \
+            .append(migration_times["rsyncDumpTransferRate"])
+        self._results["rsyncDumpCompressionSpeedup"] \
+            .append(migration_times["rsyncDumpCompressionSpeedup"])
 
     def _save_migration_measurements_second_experiment(self, migration_times,
                                                        compression_enabled):
@@ -227,6 +259,22 @@ class ServerExperimentManager:
         self._results["dumpSize"].append(migration_times["dumpSize"])
         self._results["preDumpSize"].append(migration_times["preDumpSize"])
         self._results["compressionEnabled"].append(compression_enabled)
+        self._results["rsyncPreDumpTotalFileSize"] \
+            .append(migration_times["rsyncPreDumpTotalFileSize"])
+        self._results["rsyncPreDumpTotalBytesSent"] \
+            .append(migration_times["rsyncPreDumpTotalBytesSent"])
+        self._results["rsyncPreDumpTransferRate"] \
+            .append(migration_times["rsyncPreDumpTransferRate"])
+        self._results["rsyncPreDumpCompressionSpeedup"] \
+            .append(migration_times["rsyncPreDumpCompressionSpeedup"])
+        self._results["rsyncDumpTotalFileSize"] \
+            .append(migration_times["rsyncDumpTotalFileSize"])
+        self._results["rsyncDumpTotalBytesSent"] \
+            .append(migration_times["rsyncDumpTotalBytesSent"])
+        self._results["rsyncDumpTransferRate"] \
+            .append(migration_times["rsyncDumpTransferRate"])
+        self._results["rsyncDumpCompressionSpeedup"] \
+            .append(migration_times["rsyncDumpCompressionSpeedup"])
 
     def save_migration_measurements(self, migration_times, compression_enabled):
         if self._id == 1:
