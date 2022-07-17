@@ -186,8 +186,6 @@ def main():
         print("Sent {} command to {}:{}".format(json.dumps(switch_command),
                                                 args.management_ip,
                                                 args.management_port))
-        message, address = command_socket.recvfrom(1024)
-        print("Received response", message.decode())
 
         # Wait until the end of the experiment,
         # namely until the server container stops.
