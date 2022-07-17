@@ -44,12 +44,14 @@ def update_configuration_file(runc_base, container_name,
         json.dump(new_config, app_config_file, indent=4)
 
 
-def parse_service_times_dump(runc_base, container_name,
-                             app_service_times_dump_container_path):
+def parse_and_delete_service_times_dump(runc_base, container_name,
+                                        app_service_times_dump_container_path):
     app_dump_path = runc_base + container_name + "/rootfs" + \
                     app_service_times_dump_container_path
     with open(app_dump_path, "r") as app_service_times_file:
-        return json.load(app_service_times_file)
+        service_times = json.load(app_service_times_file)
+    os.remove(app_dump_path)
+    return service_times
 
 
 def main():
@@ -87,8 +89,9 @@ def main():
 
         # Parse the service times dumped by the proxygen client and
         # add them to the collection of service times.
-        service_times = parse_service_times_dump(runc_base, container_name,
-                                                 app_service_times_dump_container_path)
+        service_times = parse_and_delete_service_times_dump(runc_base,
+                                                            container_name,
+                                                            app_service_times_dump_container_path)
         experiment_manager.save_service_times(service_times)
 
         # Sleep before starting a new run. The time should be large enough

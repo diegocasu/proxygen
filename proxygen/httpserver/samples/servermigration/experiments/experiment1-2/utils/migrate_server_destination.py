@@ -121,6 +121,7 @@ def _handle_server_migration(conn, addr):
 
         ret = restore_proc.wait()
         restore_time = _parse_restore_time(restore_output_file)
+        os.remove(restore_output_file)
 
         if ret == 0:
             reply = "runc restored {} successfully" \
@@ -142,6 +143,7 @@ def _handle_server_migration(conn, addr):
                 print("Lazy-pages server terminated correctly")
                 n_lazy_pages, lazy_pages_tx_time, lazy_pages_tx_end_time = \
                     _parse_lazy_pages_measurements(lazy_pages_output_file)
+                os.remove(lazy_pages_output_file)
             else:
                 print("Lazy-pages server failed")
                 _error()
