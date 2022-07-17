@@ -31,6 +31,7 @@
     "serverMigrationPort": 6666,
     "notifyImminentMigrationAfterRequest": 9,
     "triggerMigrationAfterRequest": 10,
-    "shutdownAfterRequest": 20
+
+    "shutdownAfterRequest": 0
   }
 }

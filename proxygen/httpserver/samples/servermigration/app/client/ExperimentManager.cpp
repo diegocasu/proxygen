@@ -223,10 +223,18 @@ bool ExperimentManager::maybeStopExperiment(
     const int64_t &numberOfCompletedRequests) {
   switch (experimentId_) {
     case ExperimentId::FIRST:
-    case ExperimentId::SECOND:
       if (numberOfCompletedRequests == shutdownAfterRequest_) {
         handleFirstAndSecondExperimentStopExperiment();
         return true;
+      }
+      return false;
+    case ExperimentId::SECOND:
+      if (firstResponseFromNewServerAddressReceived_) {
+        --responsesFromNewServerAddressBeforeShutdown_;
+        if (responsesFromNewServerAddressBeforeShutdown_ <= 0) {
+          handleFirstAndSecondExperimentStopExperiment();
+          return true;
+        }
       }
       return false;
     case ExperimentId::THIRD:

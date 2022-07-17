@@ -118,6 +118,7 @@ class ExperimentManager
   // the first response from the new server address is received.
   folly::Optional<folly::SocketAddress> secondExperimentOriginalServerAddress_;
   bool firstResponseFromNewServerAddressReceived_{false};
+  int responsesFromNewServerAddressBeforeShutdown_{5};
 };
 
 } // namespace quic::samples::servermigration
