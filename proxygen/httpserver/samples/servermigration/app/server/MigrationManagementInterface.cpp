@@ -90,7 +90,7 @@ void MigrationManagementInterface::onConnectionClose(
     }
     transports_.erase(serverConnectionId);
     if (numberOfTransportsMigrated_ == transports_.size()) {
-      LOG(INFO) << "Server migration completed";
+      VLOG(1) << "Server migration completed";
       resetMigrationState();
     }
     return;
@@ -102,7 +102,7 @@ void MigrationManagementInterface::onConnectionClose(
   }
   transports_.erase(serverConnectionId);
   if (numberOfTransportsReady_ == transports_.size() && !transportsReady_) {
-    LOG(INFO) << "Server ready for migration";
+    VLOG(1) << "Server ready for migration";
     transportsReady_ = true;
   }
 }
@@ -126,9 +126,9 @@ void MigrationManagementInterface::onServerMigrationReady(
   transports_[serverConnectionId] = TransportMigrationState::READY;
   ++numberOfTransportsReady_;
   if (numberOfTransportsReady_ == transports_.size()) {
-    LOG(INFO) << "Server ready for migration";
     migrationReadyTime_ = std::chrono::steady_clock::now();
     transportsReady_ = true;
+    VLOG(1) << "Server ready for migration";
   }
 }
 
@@ -140,7 +140,7 @@ void MigrationManagementInterface::onServerMigrationCompleted(
   transports_[serverConnectionId] = TransportMigrationState::COMPLETED;
   ++numberOfTransportsMigrated_;
   if (numberOfTransportsMigrated_ == transports_.size()) {
-    LOG(INFO) << "Server migration completed";
+    VLOG(1) << "Server migration completed";
     resetMigrationState();
   }
 }
@@ -221,7 +221,7 @@ void MigrationManagementInterface::handleOnImminentServerMigrationCommand(
     // to onServerMigrationFailed() or onServerMigrationReady() happen.
     std::lock_guard<std::mutex> guard(migrationMutex_);
     if (transports_.empty() && !transportsReady_) {
-      LOG(INFO) << "Server ready for migration";
+      VLOG(1) << "Server ready for migration";
       transportsReady_ = true;
     }
   }
@@ -246,7 +246,7 @@ void MigrationManagementInterface::handleOnNetworkSwitchCommand(
     std::lock_guard<std::mutex> guard(migrationMutex_);
     if (numberOfTransportsMigrated_ == transports_.size()) {
       // This is done to update the state i
-      LOG(INFO) << "Server migration completed";
+      VLOG(1) << "Server migration completed";
       resetMigrationState();
     }
   }
