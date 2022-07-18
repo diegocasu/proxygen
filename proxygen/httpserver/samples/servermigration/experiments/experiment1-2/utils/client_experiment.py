@@ -58,7 +58,8 @@ class ClientExperimentManager:
 
         self._results = {"experiment": [], "run": [], "repetition": [],
                          "seed": [], "serviceTimes [us]": [],
-                         "serverAddresses": []}
+                         "serverAddresses": [],
+                         "firstRequestAfterMigrationTriggered": []}
         self._results_file = "experiment1_service_times.csv"
 
     def _initialize_second_experiment(self):
@@ -75,7 +76,8 @@ class ClientExperimentManager:
 
         self._results = {"experiment": [], "run": [], "repetition": [],
                          "seed": [], "serviceTimes [us]": [],
-                         "serverAddresses": []}
+                         "serverAddresses": [],
+                         "firstRequestAfterMigrationTriggered": []}
         self._results_file = "experiment2_service_times.csv"
 
     def _get_new_config_first_experiment(self):
@@ -146,6 +148,8 @@ class ClientExperimentManager:
         self._results["serviceTimes [us]"].append(service_times["serviceTimes"])
         self._results["serverAddresses"] \
             .append(service_times["serverAddresses"])
+        self._results["firstRequestAfterMigrationTriggered"] \
+            .append(service_times["firstRequestAfterMigrationTriggered"])
 
     def _save_service_times_second_experiment(self, service_times):
         self._results["experiment"].append(self._id)
@@ -155,6 +159,8 @@ class ClientExperimentManager:
         self._results["serviceTimes [us]"].append(service_times["serviceTimes"])
         self._results["serverAddresses"] \
             .append(service_times["serverAddresses"])
+        self._results["firstRequestAfterMigrationTriggered"] \
+            .append(service_times["firstRequestAfterMigrationTriggered"])
 
     def save_service_times(self, service_times):
         if self._id == 1:

@@ -239,9 +239,10 @@ bool ExperimentManager::maybeStopExperiment(
       return false;
     case ExperimentId::THIRD:
       if (numberOfCompletedRequests == shutdownAfterRequest_) {
-        // The third experiment comprises multiple clients, thus send the shutdown
-        // only if this is the last client. The latter is the only one with a
-        // value of notifyImminentMigrationAfterRequest_ greater than zero.
+        // The third experiment comprises multiple clients, thus send the
+        // shutdown only if this is the last client. The latter is the only
+        // one with a value of notifyImminentMigrationAfterRequest_ greater
+        // than zero.
         if (notifyImminentMigrationAfterRequest_ > 0) {
           handleThirdExperimentStopExperiment();
         }
@@ -262,23 +263,29 @@ void ExperimentManager::maybeSaveServiceTime(
       if (requestNumber == triggerMigrationAfterRequest_ + 1) {
         serviceTimes_.push_back(serviceTime);
         serverAddresses_.push_back(serverAddress.describe());
+        firstRequestAfterMigrationTriggered_.push_back(true);
       }
       return;
-    case ExperimentId::SECOND:
+    case ExperimentId::SECOND: {
       CHECK_GT(triggerMigrationAfterRequest_, 1);
+      auto migrationTriggered =
+          (requestNumber == triggerMigrationAfterRequest_ + 1) ? true : false;
+      firstRequestAfterMigrationTriggered_.push_back(migrationTriggered);
+      serviceTimes_.push_back(serviceTime);
+      serverAddresses_.push_back(serverAddress.describe());
+
       if (requestNumber == 1) {
         secondExperimentOriginalServerAddress_ = serverAddress;
         return;
       }
+
       if (requestNumber > triggerMigrationAfterRequest_ &&
-          !firstResponseFromNewServerAddressReceived_) {
-        if (secondExperimentOriginalServerAddress_ != serverAddress) {
-          firstResponseFromNewServerAddressReceived_ = true;
-        }
-        serviceTimes_.push_back(serviceTime);
-        serverAddresses_.push_back(serverAddress.describe());
+          !firstResponseFromNewServerAddressReceived_ &&
+          secondExperimentOriginalServerAddress_ != serverAddress) {
+        firstResponseFromNewServerAddressReceived_ = true;
       }
       return;
+    }
     case ExperimentId::THIRD:
       return;
   }
@@ -301,10 +308,17 @@ void ExperimentManager::dumpServiceTimesToFile() {
     serverAddresses.push_back(address);
   }
 
+  folly::dynamic firstRequestAfterMigrationTriggered = folly::dynamic::array();
+  for (const auto &firstRequest : firstRequestAfterMigrationTriggered_) {
+    firstRequestAfterMigrationTriggered.push_back(firstRequest);
+  }
+
   folly::dynamic dynamic = folly::dynamic::object();
   dynamic["experiment"] = static_cast<int64_t>(experimentId_);
   dynamic["serviceTimes"] = serviceTimes;
   dynamic["serverAddresses"] = serverAddresses;
+  dynamic["firstRequestAfterMigrationTriggered"] =
+      firstRequestAfterMigrationTriggered;
 
   auto dynamicJson = folly::toJson(dynamic);
   auto success = folly::writeFile(dynamicJson, serviceTimesFile_.data());
