@@ -73,10 +73,9 @@ def _xfer_pre_dump(parent_path, destination_ip, base_path, rsync_opts,
     logger.info("PRE-DUMP size: {}".format(pre_dump_size))
 
     logger.info("Transferring PRE-DUMP to {}".format(destination_ip))
-    cmd = "(time -p rsync {} --stats {} {}:{}/) 2>&1 | " \
-          "sudo tee {} > /dev/null".format(rsync_opts, parent_path,
-                                           destination_ip, base_path,
-                                           rsync_pre_dump_output_file)
+    cmd = "(time -p rsync {} --stats {} {}:{}/) 2>&1 | sudo tee {}" \
+        .format(rsync_opts, parent_path, destination_ip, base_path,
+                rsync_pre_dump_output_file)
     start = time.time()
     ret = os.system(cmd)
     end = time.time()
@@ -155,10 +154,9 @@ def _xfer_final(image_path, destination_ip, base_path, rsync_opts,
     logger.info("DUMP size: {}".format(dump_size))
 
     logger.info("Transferring DUMP to {}".format(destination_ip))
-    cmd = "(time -p rsync {} --stats {} {}:{}/) 2>&1 | " \
-          "sudo tee {} > /dev/null".format(rsync_opts, image_path,
-                                           destination_ip, base_path,
-                                           rsync_dump_output_file)
+    cmd = "(time -p rsync {} --stats {} {}:{}/) 2>&1 | sudo tee {}" \
+        .format(rsync_opts, image_path, destination_ip, base_path,
+                rsync_dump_output_file)
     start = time.time()
     ret = os.system(cmd)
     end = time.time()

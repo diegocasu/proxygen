@@ -105,7 +105,7 @@ def _handle_server_migration(conn, addr):
         # with runC base directories in the root folder, due to missing write
         # privileges. Note that the "time" command writes to stderr, so a
         # redirection to stdout is needed.
-        cmd += ") 2>&1 | sudo tee {} > /dev/null".format(restore_output_file)
+        cmd += ") 2>&1 | sudo tee {}".format(restore_output_file)
 
         logger.info("Running '{}'".format(cmd))
         restore_proc = subprocess.Popen(cmd, shell=True)
@@ -123,7 +123,7 @@ def _handle_server_migration(conn, addr):
         lazy_pages_output_file = "lazy_pages_output.txt"
         if lazy:
             cmd = "criu lazy-pages --page-server --address {} --port 27 -vv " \
-                  "-D {} -W {} 2>&1 | sudo tee {} > /dev/null" \
+                  "-D {} -W {} 2>&1 | sudo tee {}" \
                 .format(addr[0], msg["restore"]["image_path"],
                         msg["restore"]["image_path"], lazy_pages_output_file)
             logger.info("Running lazy-pages server: '{}'".format(cmd))
