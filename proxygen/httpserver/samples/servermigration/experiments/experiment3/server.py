@@ -127,7 +127,7 @@ def main():
 
     # NOTE: the seed is never changed across the different runs,
     # because its value is irrelevant for the measurements taken.
-    n_clients = [10, 20, 30, 50]
+    n_clients = [1, 10, 20, 30, 50]
     protocols = ["reactiveExplicit", "symmetric"]
     n_repetitions = 10
     total_migration_notification_times = {"experiment": [], "run": [],
