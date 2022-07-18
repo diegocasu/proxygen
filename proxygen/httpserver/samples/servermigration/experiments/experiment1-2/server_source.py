@@ -6,6 +6,15 @@ from utils.oci import *
 from utils.server_experiment import ServerExperimentManager
 from utils.migrate_server_source import start_migration
 
+logger = logging.getLogger("server_source")
+handler = logging.StreamHandler(sys.stdout)
+formatter = logging.Formatter("%(asctime)s %(name)s "
+                              "%(levelname)s %(message)s",
+                              "%Y-%m-%d %H:%M:%S")
+handler.setFormatter(formatter)
+logger.addHandler(handler)
+logger.setLevel(logging.DEBUG)
+
 
 def exit_handler(command_socket, console_socket_proc, console_socket_file,
                  container_name):
@@ -18,11 +27,11 @@ def stop_container_and_console_socket(console_socket_proc, console_socket_file,
                                       container_name):
     # Possibly stop the container and the console socket.
     cmd = "sudo runc kill {} KILL".format(container_name)
-    print("Running '{}'".format(cmd))
+    logger.info("Running '{}'".format(cmd))
     os.system(cmd)
 
     cmd = "sudo runc delete " + container_name
-    print("Running '{}'".format(cmd))
+    logger.info("Running '{}'".format(cmd))
     os.system(cmd)
 
     stop_console_socket(console_socket_proc, console_socket_file)
@@ -49,7 +58,7 @@ def parse_arguments():
 
 
 def build_oci_bundle(container_name, runc_base, app_config_container_path):
-    print("Building OCI bundle '{}'".format(container_name))
+    logger.info("Building OCI bundle '{}'".format(container_name))
     remove_oci_image_in_working_dir()
     remove_oci_bundle_in_working_dir(container_name)
     remove_oci_bundle_in_runc_dir(runc_base, container_name)
@@ -70,47 +79,50 @@ def create_command_socket():
     sock = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
     try:
         sock.bind(("", 19888))
-        print("Command server listening on {}:{}".format(*sock.getsockname()))
+        logger.info("Command server listening on {}:{}"
+                    .format(*sock.getsockname()))
         return sock
     except socket.error as msg:
-        print("Bind failed. Error:", msg)
+        logger.error("Bind failed. Error: {}".format(msg))
         sock.close()
         sys.exit(1)
 
 
 def wait_for_migration_command(command_socket):
-    print("Waiting for the migration command")
+    logger.info("Waiting for the migration command")
     while True:
         message, address = command_socket.recvfrom(1024)
         message = message.decode()
-        print("Received message '{}' from {}:{}".format(message, *address))
+        logger.info("Received message '{}' from {}:{}"
+                    .format(message, *address))
 
         if message == "migrate":
-            print("Sending response: OK")
+            logger.info("Sending response: OK")
             response = "OK"
             command_socket.sendto(response.encode(), address)
             return
 
-        print("Ignoring message")
+        logger.info("Ignoring message")
 
 
 def wait_for_end_command(command_socket):
-    print("Waiting for the end of the experiment")
+    logger.info("Waiting for the end of the experiment")
     while True:
         message, address = command_socket.recvfrom(1024)
         message = message.decode()
-        print("Received message '{}' from {}:{}".format(message, *address))
+        logger.info("Received message '{}' from {}:{}"
+                    .format(message, *address))
 
         try:
             command = json.loads(message)
             if command["action"] == "shutdown":
-                print("Sending response: OK")
+                logger.info("Sending response: OK")
                 response = "OK"
                 command_socket.sendto(response.encode(), address)
                 return
         except:
             pass
-        print("Ignoring message")
+        logger.info("Ignoring message")
 
 
 def main():
@@ -137,12 +149,13 @@ def main():
 
         new_config, new_migration_technique = experiment_manager.get_new_config()
         if new_config is None or new_migration_technique is None:
-            print("Ending the experiment")
+            logger.info("Ending the experiment")
             break
 
-        print("New experiment run with migration technique",
-              str(new_migration_technique), "and configuration")
-        print(json.dumps(new_config, indent=4))
+        logger.info("New experiment run with migration technique {} "
+                    "and configuration\n{}"
+                    .format(str(new_migration_technique),
+                            json.dumps(new_config, indent=4)))
 
         # Update the configuration file used by the application.
         update_configuration_file(runc_base, container_name,
@@ -178,14 +191,14 @@ def main():
 
         # Force console socket and container to stop at the end of the run.
         # If a migration was successful, this step actually does nothing.
-        print("End of an experiment run: stopping console socket "
-              "and container, if still up")
+        logger.info("End of an experiment run: stopping console socket "
+                    "and container, if still up")
         stop_container_and_console_socket(console_socket_proc,
                                           console_socket_file,
                                           container_name)
 
         # Sleep before starting a new run.
-        print("Sleeping for 5 seconds before the next run")
+        logger.info("Sleeping for 5 seconds before the next run")
         time.sleep(5)
 
     experiment_manager.dump_experiment_results_to_file()

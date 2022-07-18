@@ -4,6 +4,15 @@ import pandas as pd
 
 from utils.oci import *
 
+logger = logging.getLogger("server")
+handler = logging.StreamHandler(sys.stdout)
+formatter = logging.Formatter("%(asctime)s %(name)s "
+                              "%(levelname)s %(message)s",
+                              "%Y-%m-%d %H:%M:%S")
+handler.setFormatter(formatter)
+logger.addHandler(handler)
+logger.setLevel(logging.DEBUG)
+
 
 def exit_handler(console_socket_proc, console_socket_file,
                  container_name):
@@ -15,11 +24,11 @@ def stop_container_and_console_socket(console_socket_proc, console_socket_file,
                                       container_name):
     # Possibly stop the container and the console socket.
     cmd = "sudo runc kill {} KILL".format(container_name)
-    print("Running '{}'".format(cmd))
+    logger.info("Running '{}'".format(cmd))
     os.system(cmd)
 
     cmd = "sudo runc delete " + container_name
-    print("Running '{}'".format(cmd))
+    logger.info("Running '{}'".format(cmd))
     os.system(cmd)
 
     stop_console_socket(console_socket_proc, console_socket_file)
@@ -34,7 +43,7 @@ def parse_arguments():
 
 
 def build_oci_bundle(container_name, runc_base, app_config_container_path):
-    print("Building OCI bundle '{}'".format(container_name))
+    logger.info("Building OCI bundle '{}'".format(container_name))
     remove_oci_image_in_working_dir()
     remove_oci_bundle_in_runc_dir(runc_base, container_name)
     generate_oci_bundle(container_name)
@@ -56,13 +65,13 @@ def set_configuration_file(runc_base, container_name,
 
 
 def wait_for_server_termination(container_name):
-    print("Waiting for server termination")
+    logger.info("Waiting for server termination")
     cmd = "sudo runc list -f json"
     while True:
         cmd_output = subprocess.run(cmd, stdout=subprocess.PIPE,
                                     shell=True).stdout.decode()
         if cmd_output == "null":
-            print("Server terminated")
+            logger.info("Server terminated")
             break
 
         container_list = json.loads(cmd_output)
@@ -70,7 +79,7 @@ def wait_for_server_termination(container_name):
                        container["id"] == container_name), None)
 
         if server is None or server["status"] == "stopped":
-            print("Server terminated")
+            logger.info("Server terminated")
             break
 
         time.sleep(1)
@@ -128,8 +137,9 @@ def main():
     for protocol in protocols:
         for n_client in n_clients:
             for repetition in range(1, n_repetitions + 1):
-                print("New experiment run involving {} protocol and {} clients."
-                      " Repetition: {}".format(protocol, n_client, repetition))
+                logger.info("New experiment run involving {} protocol and "
+                            "{} clients. Repetition: {}"
+                            .format(protocol, n_client, repetition))
 
                 # Start the server container.
                 console_socket_proc = start_console_socket(console_socket_file,
@@ -160,17 +170,17 @@ def main():
 
                 # Force console socket and container to stop
                 # at the end of the run.
-                print("End of an experiment run: stopping console socket "
-                      "and container, if still up")
+                logger.info("End of an experiment run: stopping console socket "
+                            "and container, if still up")
                 stop_container_and_console_socket(console_socket_proc,
                                                   console_socket_file,
                                                   container_name)
 
                 # Sleep before starting a new run.
-                print("Sleeping for 5 seconds before the next run")
+                logger.info("Sleeping for 5 seconds before the next run")
                 time.sleep(5)
 
-    print("Ending the experiment")
+    logger.info("Ending the experiment")
     dump_migration_notification_times(total_migration_notification_times)
 
 

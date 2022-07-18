@@ -3,11 +3,21 @@ import sys
 import json
 import os
 import subprocess
+import logging
 from distutils.util import strtobool
+
+logger = logging.getLogger("migrate_server_destination")
+handler = logging.StreamHandler(sys.stdout)
+formatter = logging.Formatter("%(asctime)s %(name)s "
+                              "%(levelname)s %(message)s",
+                              "%Y-%m-%d %H:%M:%S")
+handler.setFormatter(formatter)
+logger.addHandler(handler)
+logger.setLevel(logging.DEBUG)
 
 
 def _error():
-    print("Something did not work. Exiting")
+    logger.error("Something did not work. Exiting")
     sys.exit(1)
 
 
@@ -53,13 +63,13 @@ def _parse_lazy_pages_measurements(output_file):
 def _handle_server_migration(conn, addr):
     data = conn.recv(1024)
     if not data:
-        print("Received no data")
+        logger.error("Received no data")
         _error()
 
     try:
         msg = json.loads(data)
         if "restore" not in msg:
-            print("Unknown request:", msg)
+            logger.error("Unknown request: '{}'".format(msg))
             _error()
 
         os.system("criu -V")
@@ -97,7 +107,7 @@ def _handle_server_migration(conn, addr):
         # redirection to stdout is needed.
         cmd += ") 2>&1 | sudo tee {} > /dev/null".format(restore_output_file)
 
-        print("Running '{}'".format(cmd))
+        logger.info("Running '{}'".format(cmd))
         restore_proc = subprocess.Popen(cmd, shell=True)
 
         # This new command starts the lazy-pages daemon. The daemon monitors the
@@ -116,7 +126,7 @@ def _handle_server_migration(conn, addr):
                   "-D {} -W {} 2>&1 | sudo tee {} > /dev/null" \
                 .format(addr[0], msg["restore"]["image_path"],
                         msg["restore"]["image_path"], lazy_pages_output_file)
-            print("Running lazy-pages server: '{}'".format(cmd))
+            logger.info("Running lazy-pages server: '{}'".format(cmd))
             lazy_pages_proc = subprocess.Popen(cmd, shell=True)
 
         ret = restore_proc.wait()
@@ -129,7 +139,7 @@ def _handle_server_migration(conn, addr):
         else:
             reply = "runc failed({:d})".format(ret)
 
-        print(reply)
+        logger.info(reply)
         conn.sendall(reply.encode())
         if ret != 0:
             _error()
@@ -140,12 +150,12 @@ def _handle_server_migration(conn, addr):
         if lazy_pages_proc is not None:
             ret = lazy_pages_proc.wait()
             if ret == 0:
-                print("Lazy-pages server terminated correctly")
+                logger.info("Lazy-pages server terminated correctly")
                 n_lazy_pages, lazy_pages_tx_time, lazy_pages_tx_end_time = \
                     _parse_lazy_pages_measurements(lazy_pages_output_file)
                 os.remove(lazy_pages_output_file)
             else:
-                print("Lazy-pages server failed")
+                logger.error("Lazy-pages server failed")
                 _error()
 
         os.chdir(old_cwd)
@@ -155,7 +165,7 @@ def _handle_server_migration(conn, addr):
                          "numberOfLazyPages": n_lazy_pages}
         return restore_times
     except Exception as e:
-        print("An error occurred:", e)
+        logger.error("An error occurred: {}".format(e))
         _error()
 
 
@@ -170,8 +180,8 @@ def wait_for_server_migration(migration_socket):
                               technique, the lazy pages quantities could be
                               equal to None.
     """
-    print("Waiting for server migration")
+    logger.info("Waiting for server migration")
     conn, addr = migration_socket.accept()
     with conn:
-        print("Connected with {}:{}".format(*addr))
+        logger.info("Connected with {}:{}".format(*addr))
         return _handle_server_migration(conn, addr)

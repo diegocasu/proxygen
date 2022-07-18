@@ -1,8 +1,18 @@
 import json
 import sys
+import logging
 import pandas as pd
 
 from utils.migrate_server_source import MigrationTechnique
+
+logger = logging.getLogger("server_experiment")
+handler = logging.StreamHandler(sys.stdout)
+formatter = logging.Formatter("%(asctime)s %(name)s "
+                              "%(levelname)s %(message)s",
+                              "%Y-%m-%d %H:%M:%S")
+handler.setFormatter(formatter)
+logger.addHandler(handler)
+logger.setLevel(logging.DEBUG)
 
 
 class ServerExperimentManager:
@@ -25,7 +35,7 @@ class ServerExperimentManager:
             # Consistency check.
             if len(self._base_address_pool) != 2 \
                     or self._destination_address is None:
-                print("Wrong base configuration for address pool")
+                logger.error("Wrong base configuration for address pool")
                 sys.exit(1)
 
         elif self._id == 2:
@@ -33,8 +43,8 @@ class ServerExperimentManager:
 
             # Consistency check.
             if len(self._current_config["serverMigration"]["addressPool"]) != 3:
-                print("Wrong base configuration for address pool. "
-                      "It must be composed of 3 addresses")
+                logger.error("Wrong base configuration for address pool. "
+                             "It must be composed of 3 addresses")
 
     def _parse_base_config(self, config_name):
         config_path = "./base_configs/" + config_name

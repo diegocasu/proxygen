@@ -1,8 +1,18 @@
 import json
 import sys
+import logging
 import pandas as pd
 
 from utils.migrate_server_source import MigrationTechnique
+
+logger = logging.getLogger("client_experiment")
+handler = logging.StreamHandler(sys.stdout)
+formatter = logging.Formatter("%(asctime)s %(name)s "
+                              "%(levelname)s %(message)s",
+                              "%Y-%m-%d %H:%M:%S")
+handler.setFormatter(formatter)
+logger.addHandler(handler)
+logger.setLevel(logging.DEBUG)
 
 
 class ClientExperimentManager:
@@ -27,8 +37,8 @@ class ClientExperimentManager:
         # Check that the given experiment ID and
         # the one of the configuration match.
         if self._current_config["experiment"]["id"] != self._id:
-            print("The given experiment ID and the configuration "
-                  "experiment ID do not match. Exiting")
+            logger.error("The given experiment ID and the configuration "
+                         "experiment ID do not match. Exiting")
             sys.exit(1)
 
     def _parse_base_config(self, config_name):

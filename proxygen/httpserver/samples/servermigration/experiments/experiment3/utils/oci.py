@@ -5,6 +5,16 @@ import json
 import enum
 import time
 import psutil
+import logging
+
+logger = logging.getLogger("oci")
+handler = logging.StreamHandler(sys.stdout)
+formatter = logging.Formatter("%(asctime)s %(name)s "
+                              "%(levelname)s %(message)s",
+                              "%Y-%m-%d %H:%M:%S")
+handler.setFormatter(formatter)
+logger.addHandler(handler)
+logger.setLevel(logging.DEBUG)
 
 
 class AppMode(enum.Enum):
@@ -14,58 +24,59 @@ class AppMode(enum.Enum):
 
 def remove_oci_image_in_working_dir():
     cmd = "sudo rm -rf ./mhq"
-    print("Removing OCI image 'mhq' from the current working directory '{}'"
-          .format(os.getcwd()))
-    print("Running '{}'".format(cmd))
+    logger.info("Removing OCI image 'mhq' from the current working "
+                "directory '{}'".format(os.getcwd()))
+    logger.info("Running '{}'".format(cmd))
     ret = os.system(cmd)
     if ret != 0:
-        print("OCI image not found. Skipping the step")
+        logger.info("OCI image not found. Skipping the step")
 
 
 def remove_oci_bundle_in_runc_dir(runc_base, container_name):
     base_path = os.path.join(runc_base, container_name)
     cmd = "sudo rm -rf " + base_path
-    print("Removing OCI bundle '{}' from the runC base directory '{}'"
-          .format(container_name, runc_base))
-    print("Running '{}'".format(cmd))
+    logger.info("Removing OCI bundle '{}' from the runC base directory '{}'"
+                .format(container_name, runc_base))
+    logger.info("Running '{}'".format(cmd))
     ret = os.system(cmd)
     if ret != 0:
-        print("OCI bundle not found. Skipping the step")
+        logger.info("OCI bundle not found. Skipping the step")
 
 
 def remove_oci_bundle_in_working_dir(container_name):
     cmd = "sudo rm -rf ./" + container_name
-    print("Removing OCI bundle '{}' from the current working directory '{}'"
-          .format(container_name, os.getcwd()))
-    print("Running '{}'".format(cmd))
+    logger.info("Removing OCI bundle '{}' from the current working 7"
+                "directory '{}'".format(container_name, os.getcwd()))
+    logger.info("Running '{}'".format(cmd))
     ret = os.system(cmd)
     if ret != 0:
-        print("OCI bundle not found. Skipping the step")
+        logger.info("OCI bundle not found. Skipping the step")
 
 
 def generate_oci_bundle(container_name):
-    print("Generating the OCI bundle '{}'".format(container_name))
+    logger.info("Generating the OCI bundle '{}'".format(container_name))
 
     cmd = "skopeo copy docker://diegocasu/mhq:latest oci:mhq:latest"
-    print("Running '{}'".format(cmd))
+    logger.info("Running '{}'".format(cmd))
     ret = os.system(cmd)
     if ret != 0:
-        print("Impossible to retrieve the OCI image with skopeo. Exiting")
+        logger.error("Impossible to retrieve the OCI image with skopeo. "
+                     "Exiting")
         sys.exit(1)
 
     cmd = "sudo umoci unpack --image mhq {} && sudo chmod +xrw {}" \
         .format(container_name, container_name)
-    print("Running '{}'".format(cmd))
+    logger.info("Running '{}'".format(cmd))
     ret = os.system(cmd)
     if ret != 0:
-        print("Impossible to unpack the OCI image with umoci. Exiting")
+        logger.error("Impossible to unpack the OCI image with umoci. Exiting")
         sys.exit(1)
 
 
 def modify_oci_bundle_config(container_name, app_mode,
                              app_config_container_path,
                              vlog_level):
-    print("Modifying the OCI bundle configuration")
+    logger.info("Modifying the OCI bundle configuration")
     old_cwd = os.getcwd()
     os.chdir(container_name)
 
@@ -91,13 +102,13 @@ def modify_oci_bundle_config(container_name, app_mode,
 def move_oci_bundle_to_runc_dir(runc_base, container_name):
     cmd = "sudo mkdir -p {} && sudo mv {} {}".format(runc_base, container_name,
                                                      runc_base)
-    print("Moving OCI bundle '{}' to '{}'"
-          .format(container_name, runc_base))
-    print("Running '{}'".format(cmd))
+    logger.info("Moving OCI bundle '{}' to '{}'"
+                .format(container_name, runc_base))
+    logger.info("Running '{}'".format(cmd))
     ret = os.system(cmd)
     if ret != 0:
-        print("Impossible to move the OCI bundle to the runC base directory."
-              " Exiting")
+        logger.error("Impossible to move the OCI bundle to the runC base "
+                     "directory. Exiting")
         sys.exit(1)
 
 
@@ -105,13 +116,13 @@ def copy_oci_bundle_to_runc_dir(runc_base, container_name):
     cmd = "sudo mkdir -p {} && sudo cp -r {} {}".format(runc_base,
                                                         container_name,
                                                         runc_base)
-    print("Copying OCI bundle '{}' to '{}'"
-          .format(container_name, runc_base))
-    print("Running '{}'".format(cmd))
+    logger.info("Copying OCI bundle '{}' to '{}'"
+                .format(container_name, runc_base))
+    logger.info("Running '{}'".format(cmd))
     ret = os.system(cmd)
     if ret != 0:
-        print("Impossible to copy the OCI bundle to the runC base directory."
-              " Exiting")
+        logger.error("Impossible to copy the OCI bundle to the runC base "
+                     "directory. Exiting")
         sys.exit(1)
 
 
@@ -129,12 +140,12 @@ def start_container(runc_base, bundle_name, container_name,
 
     cmd += container_name
 
-    print("Starting the container '{}'".format(container_name))
-    print("Running '{}'".format(cmd))
+    logger.info("Starting the container '{}'".format(container_name))
+    logger.info("Running '{}'".format(cmd))
     ret = os.system(cmd)
     if ret != 0:
-        print("Impossible to start the container '{}'. Exiting"
-              .format(container_name))
+        logger.error("Impossible to start the container '{}'. Exiting"
+                     .format(container_name))
         sys.exit(1)
 
 
@@ -144,8 +155,8 @@ def start_console_socket(console_socket_file, suppress_output):
         cmd += "-m null "
     cmd += console_socket_file
 
-    print("Starting the console socket")
-    print("Running '{}'".format(cmd))
+    logger.info("Starting the console socket")
+    logger.info("Running '{}'".format(cmd))
     proc = subprocess.Popen(cmd, shell=True)
 
     # Wait until the console socket file has been created.
@@ -155,22 +166,22 @@ def start_console_socket(console_socket_file, suppress_output):
 
 
 def stop_console_socket(console_socket_proc, console_socket_file):
-    print("Checking the status of the console socket", console_socket_file)
-
+    logger.info("Checking the status of the console socket {}"
+                .format(console_socket_file))
     try:
         console_socket_proc.wait(timeout=0)
-        print("Console socket already stopped")
+        logger.info("Console socket already stopped")
     except:
-        print("Console socket is still running. Stopping it")
+        logger.info("Console socket is still running. Stopping it")
         process = psutil.Process(console_socket_proc.pid)
         for child in process.children(recursive=True):
             child.kill()
         process.kill()
 
     cmd = "sudo rm " + console_socket_file
-    print("Removing", console_socket_file)
-    print("Running '{}'".format(cmd))
+    logger.info("Removing {}".format(console_socket_file))
+    logger.info("Running '{}'".format(cmd))
 
     ret = os.system(cmd)
     if ret != 0:
-        print("Console socket file not found. Skipping the step")
+        logger.info("Console socket file not found. Skipping the step")

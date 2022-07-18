@@ -3,6 +3,15 @@ import argparse
 
 from utils.oci import *
 
+logger = logging.getLogger("client")
+handler = logging.StreamHandler(sys.stdout)
+formatter = logging.Formatter("%(asctime)s %(name)s "
+                              "%(levelname)s %(message)s",
+                              "%Y-%m-%d %H:%M:%S")
+handler.setFormatter(formatter)
+logger.addHandler(handler)
+logger.setLevel(logging.DEBUG)
+
 
 def exit_handler(container_names, console_socket_files,
                  console_socket_processes):
@@ -20,7 +29,7 @@ def parse_arguments():
 
 
 def build_oci_bundle(container_base_name, runc_base, app_config_container_path):
-    print("Building OCI bundle '{}'".format(container_base_name))
+    logger.info("Building OCI bundle '{}'".format(container_base_name))
     remove_oci_image_in_working_dir()
     remove_oci_bundle_in_runc_dir(runc_base, container_base_name)
     generate_oci_bundle(container_base_name)
@@ -50,10 +59,11 @@ def update_configuration_file(runc_base, container_base_name,
             # will be killed after the last client stops.
             config["experiment"]["shutdownAfterRequest"] = 3
 
-            print("Configuration file for the last client:")
+            logger.info("Configuration file for the last client:\n{}"
+                        .format(json.dumps(config, indent=4)))
         else:
-            print("Configuration file for the first clients:")
-        print(json.dumps(config, indent=4))
+            logger.info("Configuration file for the first clients:\n{}"
+                        .format(json.dumps(config, indent=4)))
 
     app_config_path = runc_base + container_base_name + "/rootfs" + \
                       app_config_container_path
@@ -93,11 +103,11 @@ def stop_all_containers_and_console_sockets(container_names,
     for i in range(0, len(container_names)):
         # Possibly stop the container and the console socket.
         cmd = "sudo runc kill {} KILL".format(container_names[i])
-        print("Running '{}'".format(cmd))
+        logger.info("Running '{}'".format(cmd))
         os.system(cmd)
 
         cmd = "sudo runc delete " + container_names[i]
-        print("Running '{}'".format(cmd))
+        logger.info("Running '{}'".format(cmd))
         os.system(cmd)
 
         stop_console_socket(console_socket_processes[i],
@@ -105,13 +115,13 @@ def stop_all_containers_and_console_sockets(container_names,
 
 
 def wait_for_last_client_termination(container_names):
-    print("Waiting for last client termination")
+    logger.info("Waiting for last client termination")
     cmd = "sudo runc list -f json"
     while True:
         cmd_output = subprocess.run(cmd, stdout=subprocess.PIPE,
                                     shell=True).stdout.decode()
         if cmd_output == "null":
-            print("All the clients terminated")
+            logger.info("All the clients terminated")
             break
 
         container_list = json.loads(cmd_output)
@@ -120,7 +130,7 @@ def wait_for_last_client_termination(container_names):
                        container["id"] == container_names[-1]), None)
 
         if client is None or client["status"] == "stopped":
-            print("Last client terminated")
+            logger.info("Last client terminated")
             break
 
         time.sleep(5)
@@ -145,8 +155,9 @@ def main():
     for protocol in protocols:
         for n_client in n_clients:
             for repetition in range(1, n_repetitions + 1):
-                print("New experiment run involving {} protocol and {} clients."
-                      " Repetition: {}".format(protocol, n_client, repetition))
+                logger.info("New experiment run involving {} protocol and"
+                            " {} clients. Repetition: {}"
+                            .format(protocol, n_client, repetition))
 
                 container_names = [container_base_name + str(i) for i in
                                    range(1, n_client + 1)]
@@ -175,17 +186,17 @@ def main():
 
                 # Force console sockets and containers
                 # to stop at the end of the run.
-                print("End of an experiment run: stopping console sockets "
-                      "and containers, if still up")
+                logger.info("End of an experiment run: stopping console "
+                            "sockets and containers, if still up")
                 stop_all_containers_and_console_sockets(container_names,
                                                         console_socket_files,
                                                         console_socket_processes)
 
                 # Sleep before starting a new run.
-                print("Sleeping for 10 seconds before the next run")
+                logger.info("Sleeping for 10 seconds before the next run")
                 time.sleep(10)
 
-    print("Ending the experiment")
+    logger.info("Ending the experiment")
 
 
 if __name__ == "__main__":

@@ -4,7 +4,17 @@ import select
 import time
 import os
 import subprocess
+import logging
 import enum
+
+logger = logging.getLogger("migrate_server_source")
+handler = logging.StreamHandler(sys.stdout)
+formatter = logging.Formatter("%(asctime)s %(name)s "
+                              "%(levelname)s %(message)s",
+                              "%Y-%m-%d %H:%M:%S")
+handler.setFormatter(formatter)
+logger.addHandler(handler)
+logger.setLevel(logging.DEBUG)
 
 
 class MigrationTechnique(enum.Enum):
@@ -25,7 +35,7 @@ class MigrationTechnique(enum.Enum):
 
 
 def _error():
-    print("Something did not work. Exiting")
+    logger.error("Something did not work. Exiting")
     sys.exit(1)
 
 
@@ -38,14 +48,14 @@ def _pre_dump(base_path, container_name):
 
     cmd = "time -p runc checkpoint --pre-dump --image-path parent {}" \
         .format(container_name)
-    print("Running '{}'".format(cmd))
+    logger.info("Running '{}'".format(cmd))
 
     start = time.time()
     ret = os.system(cmd)
     end = time.time()
     pre_dump_time = end - start
-    print("PRE-DUMP finished after {:.4f} second(s) with return code {:d}"
-          .format(pre_dump_time, ret))
+    logger.info("PRE-DUMP finished after {:.4f} second(s) with return code {:d}"
+                .format(pre_dump_time, ret))
 
     os.chdir(old_cwd)
     if ret != 0:
@@ -60,9 +70,9 @@ def _xfer_pre_dump(parent_path, destination_ip, base_path, rsync_opts,
     cmd_output = subprocess.run(cmd, stdout=subprocess.PIPE,
                                 shell=True).stdout.decode()
     pre_dump_size, _ = cmd_output.split("\t")
-    print("PRE-DUMP size:", pre_dump_size)
+    logger.info("PRE-DUMP size: {}".format(pre_dump_size))
 
-    print("Transferring PRE-DUMP to", destination_ip)
+    logger.info("Transferring PRE-DUMP to {}".format(destination_ip))
     cmd = "(time -p rsync {} --stats {} {}:{}/) 2>&1 | " \
           "sudo tee {} > /dev/null".format(rsync_opts, parent_path,
                                            destination_ip, base_path,
@@ -71,8 +81,8 @@ def _xfer_pre_dump(parent_path, destination_ip, base_path, rsync_opts,
     ret = os.system(cmd)
     end = time.time()
     pre_dump_transfer_time = end - start
-    print("PRE-DUMP transfer time: {:.4f} seconds"
-          .format(pre_dump_transfer_time))
+    logger.info("PRE-DUMP transfer time: {:.4f} seconds"
+                .format(pre_dump_transfer_time))
 
     if ret != 0:
         _error()
@@ -111,7 +121,7 @@ def _real_dump(base_path, container_name, precopy, postcopy):
         cmd += " --status-fd /tmp/postcopy-pipe"
 
     cmd += " " + container_name
-    print("Running '{}'".format(cmd))
+    logger.info("Running '{}'".format(cmd))
 
     start = time.time()
     proc = subprocess.Popen(cmd, shell=True)
@@ -119,15 +129,15 @@ def _real_dump(base_path, container_name, precopy, postcopy):
         p_pipe = os.open("/tmp/postcopy-pipe", os.O_RDONLY)
         ret = os.read(p_pipe, 1)
         if ret == '\0':
-            print("Ready for lazy page transfer")
+            logger.info("Ready for lazy page transfer")
         ret = 0
     else:
         # When the post-copy phase is not present, wait until the dump ends.
         ret = proc.wait()
     end = time.time()
     dump_time = end - start
-    print("DUMP finished after {:.4f} second(s) with return code {:d}"
-          .format(dump_time, ret))
+    logger.info("DUMP finished after {:.4f} second(s) with return code {:d}"
+                .format(dump_time, ret))
 
     os.chdir(old_cwd)
     if ret != 0:
@@ -142,9 +152,9 @@ def _xfer_final(image_path, destination_ip, base_path, rsync_opts,
     cmd_output = subprocess.run(cmd, stdout=subprocess.PIPE,
                                 shell=True).stdout.decode()
     dump_size, _ = cmd_output.split("\t")
-    print("DUMP size:", dump_size)
+    logger.info("DUMP size: {}".format(dump_size))
 
-    print("Transferring DUMP to", destination_ip)
+    logger.info("Transferring DUMP to {}".format(destination_ip))
     cmd = "(time -p rsync {} --stats {} {}:{}/) 2>&1 | " \
           "sudo tee {} > /dev/null".format(rsync_opts, image_path,
                                            destination_ip, base_path,
@@ -153,7 +163,7 @@ def _xfer_final(image_path, destination_ip, base_path, rsync_opts,
     ret = os.system(cmd)
     end = time.time()
     dump_transfer_time = end - start
-    print("DUMP transfer time: {:.4f} seconds".format(dump_transfer_time))
+    logger.info("DUMP transfer time: {:.4f} seconds".format(dump_transfer_time))
 
     if ret != 0:
         _error()
@@ -251,7 +261,7 @@ def _migrate(container_name, destination_ip, pre, lazy, base_path, rsync_opts):
         for s in input_ready:
             answer = s.recv(1024)
             decoded_answer = answer.decode()
-            print(decoded_answer)
+            logger.info(decoded_answer)
             if "failed" in decoded_answer:
                 _error()
 
@@ -290,7 +300,7 @@ def start_migration(runc_base, container_name, destination_ip, pre, lazy,
                                 Depending on the chosen technique, the pre-dump
                                 elements could be equal to None.
     """
-    print("Starting server migration")
+    logger.info("Starting server migration")
     base_path = runc_base + container_name
 
     # "-h" outputs numbers in human readable format.

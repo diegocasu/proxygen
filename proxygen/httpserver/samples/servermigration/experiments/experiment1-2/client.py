@@ -4,15 +4,24 @@ import argparse
 from utils.oci import *
 from utils.client_experiment import ClientExperimentManager
 
+logger = logging.getLogger("client")
+handler = logging.StreamHandler(sys.stdout)
+formatter = logging.Formatter("%(asctime)s %(name)s "
+                              "%(levelname)s %(message)s",
+                              "%Y-%m-%d %H:%M:%S")
+handler.setFormatter(formatter)
+logger.addHandler(handler)
+logger.setLevel(logging.DEBUG)
+
 
 def exit_handler(container_name):
     # Possibly stop the client container and free the occupied resources.
     cmd = "sudo runc kill {} KILL".format(container_name)
-    print("Running '{}'".format(cmd))
+    logger.info("Running '{}'".format(cmd))
     os.system(cmd)
 
     cmd = "sudo runc delete " + container_name
-    print("Running '{}'".format(cmd))
+    logger.info("Running '{}'".format(cmd))
     os.system(cmd)
 
 
@@ -27,7 +36,7 @@ def parse_arguments():
 
 
 def build_oci_bundle(container_name, runc_base, app_config_container_path):
-    print("Building OCI bundle '{}'".format(container_name))
+    logger.info("Building OCI bundle '{}'".format(container_name))
     remove_oci_image_in_working_dir()
     remove_oci_bundle_in_runc_dir(runc_base, container_name)
     generate_oci_bundle(container_name)
@@ -73,11 +82,11 @@ def main():
     while True:
         new_config = experiment_manager.get_new_config()
         if new_config is None:
-            print("Ending the experiment")
+            logger.info("Ending the experiment")
             break
 
-        print("New experiment run with configuration")
-        print(json.dumps(new_config, indent=4))
+        logger.info("New experiment run with configuration\n{}"
+                    .format(json.dumps(new_config, indent=4)))
 
         # Update the configuration file used by the application.
         update_configuration_file(runc_base, container_name,
@@ -96,7 +105,7 @@ def main():
 
         # Sleep before starting a new run. The time should be large enough
         # for the migration scripts to resume before this script.
-        print("Sleeping for 10 seconds before the next run")
+        logger.info("Sleeping for 10 seconds before the next run")
         time.sleep(10)
 
     experiment_manager.dump_experiment_results_to_file()

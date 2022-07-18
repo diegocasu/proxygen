@@ -7,6 +7,15 @@ from utils.oci import *
 from utils.migrate_server_destination import wait_for_server_migration
 from utils.client_experiment import ClientExperimentManager
 
+logger = logging.getLogger("server_destination")
+handler = logging.StreamHandler(sys.stdout)
+formatter = logging.Formatter("%(asctime)s %(name)s "
+                              "%(levelname)s %(message)s",
+                              "%Y-%m-%d %H:%M:%S")
+handler.setFormatter(formatter)
+logger.addHandler(handler)
+logger.setLevel(logging.DEBUG)
+
 
 def exit_handler(command_socket, console_socket_proc, console_socket_file,
                  container_name):
@@ -19,11 +28,11 @@ def stop_container_and_console_socket(console_socket_proc, console_socket_file,
                                       container_name):
     # Possibly stop the container and the console socket.
     cmd = "sudo runc kill {} KILL".format(container_name)
-    print("Running '{}'".format(cmd))
+    logger.info("Running '{}'".format(cmd))
     os.system(cmd)
 
     cmd = "sudo runc delete " + container_name
-    print("Running '{}'".format(cmd))
+    logger.info("Running '{}'".format(cmd))
     os.system(cmd)
 
     stop_console_socket(console_socket_proc, console_socket_file)
@@ -43,7 +52,7 @@ def parse_arguments():
 
 
 def build_oci_bundle(container_name, runc_base):
-    print("Building OCI bundle '{}'".format(container_name))
+    logger.info("Building OCI bundle '{}'".format(container_name))
     remove_oci_image_in_working_dir()
     remove_oci_bundle_in_working_dir(container_name)
     remove_oci_bundle_in_runc_dir(runc_base, container_name)
@@ -55,10 +64,11 @@ def create_migration_socket():
     try:
         sock.bind(("", 18863))
         sock.listen()
-        print("Migration server listening on {}:{}".format(*sock.getsockname()))
+        logger.info("Migration server listening on {}:{}"
+                    .format(*sock.getsockname()))
         return sock
     except socket.error as msg:
-        print("Bind failed. Error:", msg)
+        logger.error("Bind failed. Error: {}".format(msg))
         sock.close()
         sys.exit(1)
 
@@ -67,22 +77,23 @@ def create_command_socket():
     sock = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
     try:
         sock.bind(("", 19999))
-        print("Command server listening on {}:{}".format(*sock.getsockname()))
+        logger.info("Command server listening on {}:{}"
+                    .format(*sock.getsockname()))
         return sock
     except socket.error as msg:
-        print("Bind failed. Error:", msg)
+        logger.error("Bind failed. Error: {}".format(msg))
         sock.close()
         sys.exit(1)
 
 
 def wait_for_server_termination(container_name):
-    print("Waiting for server termination")
+    logger.info("Waiting for server termination")
     cmd = "sudo runc list -f json"
     while True:
         cmd_output = subprocess.run(cmd, stdout=subprocess.PIPE,
                                     shell=True).stdout.decode()
         if cmd_output == "null":
-            print("Server terminated")
+            logger.info("Server terminated")
             break
 
         container_list = json.loads(cmd_output)
@@ -90,7 +101,7 @@ def wait_for_server_termination(container_name):
                        container["id"] == container_name), None)
 
         if server is None or server["status"] == "stopped":
-            print("Server terminated")
+            logger.info("Server terminated")
             break
 
         time.sleep(1)
@@ -158,9 +169,9 @@ def main():
         # Create a configuration like the client does, and check if
         # the experiment has ended. The configuration is never used.
         if experiment_manager.get_new_config() is None:
-            print("Ending the experiment")
+            logger.info("Ending the experiment")
             break
-        print("New experiment run")
+        logger.info("New experiment run")
 
         # Start the console socket.
         console_socket_proc = start_console_socket(console_socket_file,
@@ -183,23 +194,24 @@ def main():
         switch_command = {"action": "onNetworkSwitch"}
         command_socket.sendto(json.dumps(switch_command).encode(),
                               (args.management_ip, args.management_port))
-        print("Sent {} command to {}:{}".format(json.dumps(switch_command),
-                                                args.management_ip,
-                                                args.management_port))
+        logger.info("Sent {} command to {}:{}"
+                    .format(json.dumps(switch_command),
+                            args.management_ip,
+                            args.management_port))
 
         # Wait until the end of the experiment,
         # namely until the server container stops.
         wait_for_server_termination(container_name)
 
         # Force console socket and container to stop at the end of the run.
-        print("End of an experiment run: stopping console socket "
-              "and container, if still up")
+        logger.info("End of an experiment run: stopping console socket "
+                    "and container, if still up")
         stop_container_and_console_socket(console_socket_proc,
                                           console_socket_file,
                                           container_name)
 
         # Sleep before starting a new run.
-        print("Sleeping for 5 seconds before the next run")
+        logger.info("Sleeping for 5 seconds before the next run")
         time.sleep(5)
 
     dump_restore_times(total_restore_times, args.experiment)
