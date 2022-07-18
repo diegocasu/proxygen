@@ -9,9 +9,9 @@ import logging
 
 logger = logging.getLogger("oci")
 handler = logging.StreamHandler(sys.stdout)
-formatter = logging.Formatter("%(asctime)s %(name)s "
+formatter = logging.Formatter("%(asctime)s.%(msecs)06d %(name)s "
                               "%(levelname)s %(message)s",
-                              "%Y-%m-%d %H:%M:%S")
+                              "%H:%M:%S")
 handler.setFormatter(formatter)
 logger.addHandler(handler)
 logger.setLevel(logging.DEBUG)
