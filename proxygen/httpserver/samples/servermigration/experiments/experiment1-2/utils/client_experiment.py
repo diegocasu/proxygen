@@ -163,6 +163,9 @@ class ClientExperimentManager:
             .append(service_times["firstRequestAfterMigrationTriggered"])
 
     def save_service_times(self, service_times):
+        if service_times is None:
+            logger.info("Ignoring empty service times")
+            return
         if self._id == 1:
             self._save_service_times_first_experiment(service_times)
         elif self._id == 2:

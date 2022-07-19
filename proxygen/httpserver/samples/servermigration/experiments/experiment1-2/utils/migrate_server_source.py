@@ -192,19 +192,33 @@ def parse_rsync_output_files(rsync_pre_dump_output_file, rsync_dump_output_file,
                compression_speedup
 
     if pre:
-        with open(rsync_pre_dump_output_file, "r") as pre_dump_output_file:
+        try:
+            with open(rsync_pre_dump_output_file, "r") as pre_dump_output_file:
+                migration_times["rsyncPreDumpTotalFileSize"], \
+                migration_times["rsyncPreDumpTotalBytesSent"], \
+                migration_times["rsyncPreDumpTransferRate"], \
+                migration_times["rsyncPreDumpCompressionSpeedup"] = \
+                    parse_file(pre_dump_output_file)
+        except:
+            logger.error("Cannot parse the rsync pre-dump output file")
             migration_times["rsyncPreDumpTotalFileSize"], \
             migration_times["rsyncPreDumpTotalBytesSent"], \
             migration_times["rsyncPreDumpTransferRate"], \
             migration_times["rsyncPreDumpCompressionSpeedup"] = \
-                parse_file(pre_dump_output_file)
-
-    with open(rsync_dump_output_file, "r") as dump_output_file:
+                None, None, None, None
+    try:
+        with open(rsync_dump_output_file, "r") as dump_output_file:
+            migration_times["rsyncDumpTotalFileSize"], \
+            migration_times["rsyncDumpTotalBytesSent"], \
+            migration_times["rsyncDumpTransferRate"], \
+            migration_times["rsyncDumpCompressionSpeedup"] = \
+                parse_file(dump_output_file)
+    except:
+        logger.error("Cannot parse the rsync dump output file")
         migration_times["rsyncDumpTotalFileSize"], \
         migration_times["rsyncDumpTotalBytesSent"], \
         migration_times["rsyncDumpTransferRate"], \
-        migration_times["rsyncDumpCompressionSpeedup"] = \
-            parse_file(dump_output_file)
+        migration_times["rsyncDumpCompressionSpeedup"] = None, None, None, None
 
 
 def _migrate(container_name, destination_ip, pre, lazy, base_path, rsync_opts):

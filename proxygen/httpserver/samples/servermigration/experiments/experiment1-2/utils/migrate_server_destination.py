@@ -25,11 +25,13 @@ def _parse_restore_time(output_file):
     # Get the restore times displayed by the "time" command (real, user, sys)
     # by inspecting the output of the restore command.
     restore_time = []
-    with open(output_file, "r") as restore_output:
-        for line in restore_output:
-            if "real" in line or "user" in line or "sys" in line:
-                restore_time.append(line.rstrip("\n"))
-
+    try:
+        with open(output_file, "r") as restore_output:
+            for line in restore_output:
+                if "real" in line or "user" in line or "sys" in line:
+                    restore_time.append(line.rstrip("\n"))
+    except:
+        logger.error("Cannot parse the restore time output file")
     return restore_time
 
 
@@ -41,23 +43,27 @@ def _parse_lazy_pages_measurements(output_file):
 
     transfer_start_time = None
     transfer_end_time = None
-    with open(output_file, "r") as lazy_pages_output:
-        for line in lazy_pages_output:
-            if "uffd: Received PID:" in line:
-                result_time = re.search(regex_time, line).group(0)
-                transfer_start_time = float(result_time[1:-1])
-            elif "UFFD transferred pages" in line:
-                result_pages = re.search(regex_transferred_pages, line).group(0)
-                n_pages = int(result_pages.split("/")[0][1:])
+    n_pages = None
+    try:
+        with open(output_file, "r") as lazy_pages_output:
+            for line in lazy_pages_output:
+                if "uffd: Received PID:" in line:
+                    result_time = re.search(regex_time, line).group(0)
+                    transfer_start_time = float(result_time[1:-1])
+                elif "UFFD transferred pages" in line:
+                    result_pages = re.search(regex_transferred_pages, line) \
+                        .group(0)
+                    n_pages = int(result_pages.split("/")[0][1:])
 
-                result_time = re.search(regex_time, line).group(0)
-                transfer_end_time = float(result_time[1:-1])
+                    result_time = re.search(regex_time, line).group(0)
+                    transfer_end_time = float(result_time[1:-1])
 
         if transfer_start_time is not None and transfer_end_time is not None:
             lazy_pages_transfer_time = transfer_end_time - transfer_start_time
             return n_pages, lazy_pages_transfer_time, transfer_end_time
-
-        return None, None, None
+    except:
+        logger.error("Cannot parse the lazy pages output file")
+    return None, None, None
 
 
 def _handle_server_migration(conn, addr):

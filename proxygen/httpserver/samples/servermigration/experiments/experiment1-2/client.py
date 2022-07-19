@@ -57,10 +57,14 @@ def parse_and_delete_service_times_dump(runc_base, container_name,
                                         app_service_times_dump_container_path):
     app_dump_path = runc_base + container_name + "/rootfs" + \
                     app_service_times_dump_container_path
-    with open(app_dump_path, "r") as app_service_times_file:
-        service_times = json.load(app_service_times_file)
-    os.remove(app_dump_path)
-    return service_times
+    try:
+        with open(app_dump_path, "r") as app_service_times_file:
+            service_times = json.load(app_service_times_file)
+        os.remove(app_dump_path)
+        return service_times
+    except:
+        logger.error("Cannot parse the service times dump file")
+        return None
 
 
 def main():

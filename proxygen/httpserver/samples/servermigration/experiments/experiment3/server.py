@@ -89,13 +89,20 @@ def parse_migration_notification_time_dump(runc_base, container_name,
                                            app_migration_notification_time_dump_container_path):
     app_dump_path = runc_base + container_name + "/rootfs" + \
                     app_migration_notification_time_dump_container_path
-    with open(app_dump_path, "r") as app_migration_notification_time_file:
-        return json.load(app_migration_notification_time_file)
+    try:
+        with open(app_dump_path, "r") as app_migration_notification_time_file:
+            return json.load(app_migration_notification_time_file)
+    except:
+        logger.error("Cannot parse the migration notification time output file")
+        return None
 
 
 def save_migration_notification_time(total_migration_notification_times,
                                      n_client, protocol, repetition,
                                      migration_notification_time):
+    if migration_notification_time is None:
+        return
+
     total_migration_notification_times["experiment"].append(3)
     total_migration_notification_times["numberOfClients"].append(n_client)
     total_migration_notification_times["protocol"].append(protocol)
