@@ -57,6 +57,10 @@ class ExperimentManager
 
  private:
   enum class ExperimentId : int64_t {
+    // Measure the service time of a normal QUIC connection,
+    // without introducing server migration.
+    QUIC_BASELINE = 0,
+
     // Experiment #1: measure the service time after server migration
     // depending only on the QUIC migration protocol.
     FIRST = 1,
@@ -78,7 +82,7 @@ class ExperimentManager
   void handleFirstSecondThirdExperimentNotifyImminentServerMigration();
   void handleFirstAndSecondExperimentTriggerServerMigration();
   void handleFirstAndSecondExperimentStopExperiment();
-  void handleThirdExperimentStopExperiment();
+  void handleQuicBaselineAndThirdExperimentStopExperiment();
 
   // Information used to drive the experiment.
   ExperimentId experimentId_;

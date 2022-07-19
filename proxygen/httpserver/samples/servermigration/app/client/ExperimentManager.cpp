@@ -165,7 +165,7 @@ void ExperimentManager::handleFirstAndSecondExperimentStopExperiment() {
   waitForResponseOrRetransmit(containerMigrationScriptAddress_, jsonCommand);
 }
 
-void ExperimentManager::handleThirdExperimentStopExperiment() {
+void ExperimentManager::handleQuicBaselineAndThirdExperimentStopExperiment() {
   MigrationManagementInterface::Command command;
   command.action = MigrationManagementInterface::Action::SHUTDOWN;
   auto jsonCommand = managementCommandToJsonString(command);
@@ -182,6 +182,8 @@ void ExperimentManager::handleThirdExperimentStopExperiment() {
 void ExperimentManager::maybeNotifyImminentServerMigration(
     const int64_t &numberOfCompletedRequests) {
   switch (experimentId_) {
+    case ExperimentId::QUIC_BASELINE:
+      return;
     case ExperimentId::FIRST:
     case ExperimentId::SECOND:
       if (numberOfCompletedRequests == notifyImminentMigrationAfterRequest_) {
@@ -205,6 +207,8 @@ void ExperimentManager::maybeNotifyImminentServerMigration(
 bool ExperimentManager::maybeTriggerServerMigration(
     const int64_t &numberOfCompletedRequests) {
   switch (experimentId_) {
+    case ExperimentId::QUIC_BASELINE:
+      return false;
     case ExperimentId::FIRST:
     case ExperimentId::SECOND:
       if (numberOfCompletedRequests == triggerMigrationAfterRequest_) {
@@ -222,6 +226,12 @@ bool ExperimentManager::maybeTriggerServerMigration(
 bool ExperimentManager::maybeStopExperiment(
     const int64_t &numberOfCompletedRequests) {
   switch (experimentId_) {
+    case ExperimentId::QUIC_BASELINE:
+      if (numberOfCompletedRequests == shutdownAfterRequest_) {
+        handleQuicBaselineAndThirdExperimentStopExperiment();
+        return true;
+      }
+      return false;
     case ExperimentId::FIRST:
       if (numberOfCompletedRequests == shutdownAfterRequest_) {
         handleFirstAndSecondExperimentStopExperiment();
@@ -244,7 +254,7 @@ bool ExperimentManager::maybeStopExperiment(
         // one with a value of notifyImminentMigrationAfterRequest_ greater
         // than zero.
         if (notifyImminentMigrationAfterRequest_ > 0) {
-          handleThirdExperimentStopExperiment();
+          handleQuicBaselineAndThirdExperimentStopExperiment();
         }
         return true;
       }
@@ -259,6 +269,11 @@ void ExperimentManager::maybeSaveServiceTime(
     const long &serviceTime,
     const folly::SocketAddress &serverAddress) {
   switch (experimentId_) {
+    case ExperimentId::QUIC_BASELINE:
+      if (requestNumber == 5) {
+        serviceTimes_.push_back(serviceTime);
+      }
+      return;
     case ExperimentId::FIRST:
       if (requestNumber == triggerMigrationAfterRequest_ + 1) {
         serviceTimes_.push_back(serviceTime);
