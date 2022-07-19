@@ -1,5 +1,6 @@
 import atexit
 import argparse
+import socket
 
 from utils.oci import *
 from utils.client_experiment import ClientExperimentManager
@@ -96,15 +97,47 @@ def main():
         update_configuration_file(runc_base, container_name,
                                   app_config_container_path, new_config)
 
-        # This method ends only when the client application
-        # (and so the container) stops its execution.
-        start_container(runc_base, container_name)
+        run_attempts = 0
+        max_run_attempts = 10
+        while True:
+            logger.info("Run attempt number {}".format(run_attempts))
+            if run_attempts > max_run_attempts:
+                logger.error("Impossible to complete the run: "
+                             "max attempts reached")
+                sys.exit(1)
 
-        # Parse the service times dumped by the proxygen client and
-        # add them to the collection of service times.
-        service_times = parse_and_delete_service_times_dump(runc_base,
-                                                            container_name,
-                                                            app_service_times_dump_container_path)
+            # This method ends only when the client application
+            # (and so the container) stops its execution.
+            start_container(runc_base, container_name)
+
+            # Parse the service times dumped by the proxygen client and
+            # add them to the collection of service times.
+            service_times = parse_and_delete_service_times_dump(runc_base,
+                                                                container_name,
+                                                                app_service_times_dump_container_path)
+            if service_times is None:
+                # The experiment ended due to an error, most likely because
+                # of an idle timeout during the connection. This can happen
+                # if, using the Explicit protocol, a packet loss involves the
+                # request in between the notification of the imminent server
+                # migration and the migration command. At this point, the server
+                # should have closed the connection with the client, but should
+                # be still up and running. Then, send an onNetworkSwitch command
+                # to possibly unblock the handshakes and retry the experiment
+                # using the same configuration.
+                logging.info("Experiment run failed. Sending onNetworkSwitch "
+                             "command to the server to unblock the handshakes")
+                run_attempts += 1
+                sock = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
+                switch_command = {"action": "onNetworkSwitch"}
+                sock.sendto(json.dumps(switch_command).encode(),
+                            (new_config["serverHost"],
+                             new_config["experiment"]["serverManagementPort"]))
+                continue
+            else:
+                # Run completed successfully.
+                break
+
         experiment_manager.save_service_times(service_times)
 
         # Sleep before starting a new run. The time should be large enough
