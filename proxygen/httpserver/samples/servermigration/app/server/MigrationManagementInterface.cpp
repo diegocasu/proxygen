@@ -231,7 +231,8 @@ void MigrationManagementInterface::handleOnImminentServerMigrationCommand(
 void MigrationManagementInterface::handleOnNetworkSwitchCommand(
     const folly::SocketAddress &client) {
   if (!migrationInProgress_) {
-    throw std::invalid_argument("server migration is not in progress");
+    VLOG(1) << "Ignoring onNetworkSwitch command: migration not in progress";
+    return;
   }
   if (!networkSwitched_) {
     networkSwitched_ = true;
