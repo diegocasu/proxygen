@@ -17,10 +17,12 @@ logger.setLevel(logging.DEBUG)
 
 
 def exit_handler(command_socket, console_socket_proc, console_socket_file,
-                 container_name):
+                 container_name, experiment_manager):
     stop_container_and_console_socket(console_socket_proc, console_socket_file,
                                       container_name)
     command_socket.close()
+    experiment_manager \
+        .dump_experiment_results_to_file(call_from_exit_handler=True)
 
 
 def stop_container_and_console_socket(console_socket_proc, console_socket_file,
@@ -174,7 +176,7 @@ def main():
         # the container if a failure occurs.
         atexit.unregister(exit_handler)
         atexit.register(exit_handler, command_socket, console_socket_proc,
-                        console_socket_file, container_name)
+                        console_socket_file, container_name, experiment_manager)
 
         # Wait for migration command.
         wait_for_migration_command(command_socket)

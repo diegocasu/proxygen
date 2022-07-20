@@ -18,10 +18,12 @@ logger.setLevel(logging.DEBUG)
 
 
 def exit_handler(command_socket, console_socket_proc, console_socket_file,
-                 container_name):
+                 container_name, total_restore_times, experiment):
     stop_container_and_console_socket(console_socket_proc, console_socket_file,
                                       container_name)
     command_socket.close()
+    dump_restore_times(total_restore_times, experiment,
+                       call_from_exit_handler=True)
 
 
 def stop_container_and_console_socket(console_socket_proc, console_socket_file,
@@ -123,8 +125,12 @@ def save_restore_times(total_restore_times, restore_times, experiment_manager):
         .append(restore_times["numberOfLazyPages"])
 
 
-def dump_restore_times(total_restore_times, experiment):
-    file_name = "experiment{}_restore_times.csv".format(experiment)
+def dump_restore_times(total_restore_times, experiment,
+                       call_from_exit_handler=False):
+    if call_from_exit_handler is True:
+        file_name = "experiment{}_restore_times.bak.csv".format(experiment)
+    else:
+        file_name = "experiment{}_restore_times.csv".format(experiment)
     df = pd.DataFrame(total_restore_times)
     df.to_csv(file_name, encoding="utf-8", index=False)
 
@@ -184,7 +190,8 @@ def main():
         # the container if a failure occurs.
         atexit.unregister(exit_handler)
         atexit.register(exit_handler, command_socket, console_socket_proc,
-                        console_socket_file, container_name)
+                        console_socket_file, container_name,
+                        total_restore_times, args.experiment)
 
         # Wait for a server migration and handle it.
         restore_times = wait_for_server_migration(migration_socket)

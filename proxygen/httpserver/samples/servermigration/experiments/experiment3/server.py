@@ -15,9 +15,11 @@ logger.setLevel(logging.DEBUG)
 
 
 def exit_handler(console_socket_proc, console_socket_file,
-                 container_name):
+                 container_name, total_migration_notification_times):
     stop_container_and_console_socket(console_socket_proc, console_socket_file,
                                       container_name)
+    dump_migration_notification_times(total_migration_notification_times,
+                                      call_from_exit_handler=True)
 
 
 def stop_container_and_console_socket(console_socket_proc, console_socket_file,
@@ -113,8 +115,12 @@ def save_migration_notification_time(total_migration_notification_times,
         .append(migration_notification_time["migrationNotificationTime"])
 
 
-def dump_migration_notification_times(total_migration_notification_times):
-    file_name = "experiment3_migration_notification_times.csv"
+def dump_migration_notification_times(total_migration_notification_times,
+                                      call_from_exit_handler=False):
+    if call_from_exit_handler is True:
+        file_name = "experiment3_migration_notification_times.bak.csv"
+    else:
+        file_name = "experiment3_migration_notification_times.csv"
     df = pd.DataFrame(total_migration_notification_times)
     df.to_csv(file_name, encoding="utf-8", index=False)
 
@@ -161,7 +167,8 @@ def main():
                 # the container if a failure occurs.
                 atexit.unregister(exit_handler)
                 atexit.register(exit_handler, console_socket_proc,
-                                console_socket_file, container_name)
+                                console_socket_file, container_name,
+                                total_migration_notification_times)
 
                 # Wait until the end of the experiment,
                 # namely until the server container stops.

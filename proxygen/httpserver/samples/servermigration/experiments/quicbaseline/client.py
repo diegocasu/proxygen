@@ -14,7 +14,7 @@ logger.addHandler(handler)
 logger.setLevel(logging.DEBUG)
 
 
-def exit_handler(container_name):
+def exit_handler(container_name, total_service_times):
     # Possibly stop the client container and free the occupied resources.
     cmd = "sudo runc kill {} KILL".format(container_name)
     logger.info("Running '{}'".format(cmd))
@@ -23,6 +23,9 @@ def exit_handler(container_name):
     cmd = "sudo runc delete " + container_name
     logger.info("Running '{}'".format(cmd))
     os.system(cmd)
+
+    dump_experiment_results_to_file(total_service_times,
+                                    call_from_exit_handler=True)
 
 
 def parse_arguments():
@@ -83,9 +86,14 @@ def save_service_times(total_service_times, service_times, repetition, seed):
         .append(service_times["serviceTimes"])
 
 
-def dump_experiment_results_to_file(total_service_times):
+def dump_experiment_results_to_file(total_service_times,
+                                    call_from_exit_handler=False):
+    if call_from_exit_handler is True:
+        file_name = "experiment0_service_times.bak.csv"
+    else:
+        file_name = "experiment0_service_times.csv"
     df = pd.DataFrame(total_service_times)
-    df.to_csv("experiment0_service_times.csv", encoding="utf-8", index=False)
+    df.to_csv(file_name, encoding="utf-8", index=False)
 
 
 def main():
@@ -100,7 +108,7 @@ def main():
                            "serviceTimes [us]": []}
 
     # Handler used to stop the client container if a failure occurs.
-    atexit.register(exit_handler, container_name)
+    atexit.register(exit_handler, container_name, total_service_times)
 
     if args.rebuild_image or not os.path.isdir(runc_base + container_name):
         build_oci_bundle(container_name, runc_base, app_config_container_path)

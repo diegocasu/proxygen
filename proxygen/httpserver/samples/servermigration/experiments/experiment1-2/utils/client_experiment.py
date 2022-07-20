@@ -171,6 +171,10 @@ class ClientExperimentManager:
         elif self._id == 2:
             self._save_service_times_second_experiment(service_times)
 
-    def dump_experiment_results_to_file(self):
+    def dump_experiment_results_to_file(self, call_from_exit_handler=False):
         df = pd.DataFrame(self._results)
-        df.to_csv(self._results_file, encoding="utf-8", index=False)
+        if call_from_exit_handler is True:
+            results_file = self._results_file.rsplit(".")[0] + ".bak.csv"
+            df.to_csv(results_file, encoding="utf-8", index=False)
+        else:
+            df.to_csv(self._results_file, encoding="utf-8", index=False)

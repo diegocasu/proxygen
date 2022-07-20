@@ -15,7 +15,7 @@ logger.addHandler(handler)
 logger.setLevel(logging.DEBUG)
 
 
-def exit_handler(container_name):
+def exit_handler(container_name, experiment_manager):
     # Possibly stop the client container and free the occupied resources.
     cmd = "sudo runc kill {} KILL".format(container_name)
     logger.info("Running '{}'".format(cmd))
@@ -24,6 +24,9 @@ def exit_handler(container_name):
     cmd = "sudo runc delete " + container_name
     logger.info("Running '{}'".format(cmd))
     os.system(cmd)
+
+    experiment_manager \
+        .dump_experiment_results_to_file(call_from_exit_handler=True)
 
 
 def parse_arguments():
@@ -78,14 +81,14 @@ def main():
     app_service_times_dump_container_path = \
         "/usr/src/app/proxygen/service_times.json"
 
-    # Handler used to stop the client container if a failure occurs.
-    atexit.register(exit_handler, container_name)
-
     if args.rebuild_image or not os.path.isdir(runc_base + container_name):
         build_oci_bundle(container_name, runc_base, app_config_container_path)
 
     experiment_manager = ClientExperimentManager(args.experiment,
                                                  args.repetitions)
+
+    # Handler used to stop the client container if a failure occurs.
+    atexit.register(exit_handler, container_name, experiment_manager)
 
     while True:
         new_config = experiment_manager.get_new_config()
