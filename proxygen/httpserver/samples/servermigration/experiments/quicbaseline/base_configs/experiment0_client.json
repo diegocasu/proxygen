@@ -1,5 +1,5 @@
 {
-  "serverHost": "172.16.5.72",
+  "serverHost": "192.168.1.104",
   "serverPort": 6666,
   "serverMigration": {
     "enable": false,

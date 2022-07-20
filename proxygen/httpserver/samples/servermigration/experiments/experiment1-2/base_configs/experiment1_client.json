@@ -1,5 +1,5 @@
 {
-  "serverHost": "172.16.5.72",
+  "serverHost": "192.168.1.104",
   "serverPort": 6666,
   "serverMigration": {
     "enable": true,
@@ -24,10 +24,10 @@
   "experiment": {
     "id": 1,
     "serverManagementPort": 7777,
-    "containerMigrationScriptHost": "172.16.5.72",
+    "containerMigrationScriptHost": "192.168.1.104",
     "containerMigrationScriptPort": 19888,
     "serverMigrationProtocol": "proactiveExplicit",
-    "serverMigrationHost": "172.16.6.25",
+    "serverMigrationHost": "192.168.1.105",
     "serverMigrationPort": 6666,
     "notifyImminentMigrationAfterRequest": 9,
     "triggerMigrationAfterRequest": 10,

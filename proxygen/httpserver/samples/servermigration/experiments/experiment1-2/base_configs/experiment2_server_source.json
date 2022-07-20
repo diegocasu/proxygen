@@ -8,9 +8,9 @@
     "explicit": true,
     "poolOfAddresses": false,
     "addressPool": [
-      "172.16.6.25:6666",
-      "172.16.6.26:6666",
-      "172.16.6.27:6666"
+      "192.168.1.105:6666",
+      "192.168.1.106:6666",
+      "192.168.1.107:6666"
     ],
     "symmetric": false,
     "synchronizedSymmetric": false
