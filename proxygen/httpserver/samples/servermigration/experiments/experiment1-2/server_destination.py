@@ -48,6 +48,8 @@ def parse_arguments():
                         action="store", type=int, required=True)
     parser.add_argument("--experiment", dest="experiment", action="store",
                         required=True, type=int, choices=range(1, 3))
+    parser.add_argument("--repetitions", dest="repetitions", action="store",
+                        required=True, type=int)
     return parser.parse_args()
 
 
@@ -157,7 +159,8 @@ def main():
     # the experiment in isolation, which happens when no more configurations
     # can be crafted. Moreover, it is useful to record the run and repetition
     # numbers in the results file.
-    experiment_manager = ClientExperimentManager(args.experiment)
+    experiment_manager = ClientExperimentManager(args.experiment,
+                                                 args.repetitions)
 
     while True:
         # Copy a fresh version of the OCI bundle to the runC base directory.

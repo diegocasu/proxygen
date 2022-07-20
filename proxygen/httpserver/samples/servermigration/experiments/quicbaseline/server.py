@@ -30,6 +30,8 @@ def parse_arguments():
     parser.add_argument("--rebuild_image",
                         dest="rebuild_image", action="store_true",
                         default=False)
+    parser.add_argument("--repetitions", dest="repetitions", action="store",
+                        required=True, type=int)
     return parser.parse_args()
 
 
@@ -71,7 +73,7 @@ def main():
         build_oci_bundle(container_name, runc_base, app_config_container_path)
 
     seed = 0
-    n_repetitions = 30
+    n_repetitions = args.repetitions
 
     for repetition in range(1, n_repetitions + 1):
         seed += 1

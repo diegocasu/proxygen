@@ -39,6 +39,8 @@ def parse_arguments():
     parser.add_argument("--rebuild_image",
                         dest="rebuild_image", action="store_true",
                         default=False)
+    parser.add_argument("--repetitions", dest="repetitions", action="store",
+                        required=True, type=int)
     return parser.parse_args()
 
 
@@ -136,7 +138,7 @@ def main():
     # because its value is irrelevant for the measurements taken.
     n_clients = [1, 10, 20, 30, 50]
     protocols = ["reactiveExplicit", "symmetric"]
-    n_repetitions = 10
+    n_repetitions = args.repetitions
     total_migration_notification_times = {"experiment": [], "run": [],
                                           "numberOfClients": [], "protocol": [],
                                           "migrationNotificationTime [us]": []}

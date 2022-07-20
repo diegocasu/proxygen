@@ -16,7 +16,7 @@ logger.setLevel(logging.DEBUG)
 
 
 class ServerExperimentManager:
-    def __init__(self, experiment_id, destination_ip):
+    def __init__(self, experiment_id, destination_ip, n_repetitions):
         # The id identifies the experiment (first, second, third, fourth).
         # An experiment is composed by multiple runs, each one identified by a
         # particular combination of parameters (migration protocol, request
@@ -27,7 +27,7 @@ class ServerExperimentManager:
         self._current_run = 0
         self._current_repetition = 0
         self._current_seed = 0
-        self._n_repetitions_per_run = 10
+        self._n_repetitions_per_run = n_repetitions
 
         if self._id == 1:
             self._initialize_first_experiment(destination_ip)

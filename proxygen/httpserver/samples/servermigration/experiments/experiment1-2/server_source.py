@@ -46,6 +46,8 @@ def parse_arguments():
                         required=True, type=int, choices=range(1, 3))
     parser.add_argument("--destination_ip", dest="destination_ip",
                         action="store", required=True, type=str)
+    parser.add_argument("--repetitions", dest="repetitions", action="store",
+                        required=True, type=int)
 
     compression_parser = parser.add_mutually_exclusive_group(required=True)
     compression_parser.add_argument("--enable_rsync_compression",
@@ -133,7 +135,8 @@ def main():
 
     args = parse_arguments()
     experiment_manager = ServerExperimentManager(args.experiment,
-                                                 args.destination_ip)
+                                                 args.destination_ip,
+                                                 args.repetitions)
     if args.rebuild_image or not os.path.isdir(container_name):
         build_oci_bundle(container_name, runc_base, app_config_container_path)
 

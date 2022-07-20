@@ -33,6 +33,8 @@ def parse_arguments():
                         default=False)
     parser.add_argument("--experiment", dest="experiment", action="store",
                         required=True, type=int, choices=range(1, 3))
+    parser.add_argument("--repetitions", dest="repetitions", action="store",
+                        required=True, type=int)
     return parser.parse_args()
 
 
@@ -82,7 +84,8 @@ def main():
     if args.rebuild_image or not os.path.isdir(runc_base + container_name):
         build_oci_bundle(container_name, runc_base, app_config_container_path)
 
-    experiment_manager = ClientExperimentManager(args.experiment)
+    experiment_manager = ClientExperimentManager(args.experiment,
+                                                 args.repetitions)
 
     while True:
         new_config = experiment_manager.get_new_config()
