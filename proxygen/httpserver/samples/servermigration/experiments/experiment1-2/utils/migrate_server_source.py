@@ -28,6 +28,13 @@ class MigrationTechnique(enum.Enum):
         self.pre = pre
         self.lazy = lazy
 
+    def to_camel_case_string(self):
+        tokens = str(self.name).lower().split("_")
+        if len(tokens) == 1:
+            return tokens[0]
+        else:
+            return "".join([tokens[0], tokens[1].capitalize()])
+
     COLD = False, False
     PRE_COPY = True, False
     POST_COPY = False, True
