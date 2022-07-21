@@ -80,10 +80,14 @@ def save_service_times(total_service_times, service_times, repetition, seed):
     if service_times is None:
         return
     total_service_times["experiment"].append(0)
+    total_service_times["run"].append(1)
     total_service_times["repetition"].append(repetition)
     total_service_times["seed"].append(seed)
     total_service_times["serviceTimes [us]"] \
         .append(service_times["serviceTimes"])
+    total_service_times["serverAddresses"] \
+        .append(service_times["serverAddresses"])
+    total_service_times["protocol"] = "quicBaseline"
 
 
 def dump_experiment_results_to_file(total_service_times,
@@ -104,8 +108,9 @@ def main():
     app_service_times_dump_container_path = \
         "/usr/src/app/proxygen/service_times.json"
     base_config = parse_base_config()
-    total_service_times = {"experiment": [], "repetition": [], "seed": [],
-                           "serviceTimes [us]": []}
+    total_service_times = {"experiment": [], "run": [], "repetition": [],
+                           "seed": [], "serviceTimes [us]": [],
+                           "serverAddresses": [], "protocol": []}
 
     # Handler used to stop the client container if a failure occurs.
     atexit.register(exit_handler, container_name, total_service_times)

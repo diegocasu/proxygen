@@ -272,6 +272,7 @@ void ExperimentManager::maybeSaveServiceTime(
     case ExperimentId::QUIC_BASELINE:
       if (requestNumber == 5) {
         serviceTimes_.push_back(serviceTime);
+        serverAddresses_.push_back(serverAddress.describe());
       }
       return;
     case ExperimentId::FIRST:
