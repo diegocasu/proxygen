@@ -99,6 +99,7 @@ class ServerExperimentManager:
         self._current_migration_protocol = None
 
         self._migration_techniques = [e for e in MigrationTechnique]
+        self._migration_techniques_in_this_run = None
         self._current_migration_technique = None
 
         self._results = {"experiment": [], "run": [], "repetition": [],
@@ -168,18 +169,18 @@ class ServerExperimentManager:
             self._current_run += 1
             self._current_repetition = 1
             self._current_seed += 1
-
             self._current_config["seed"] = self._current_seed
 
-            if not self._migration_techniques or self._current_run == 1:
+            if not self._migration_techniques_in_this_run:
                 if not self._migration_protocols_sequence:
                     # All the configurations have been crafted,
                     # so end the experiment.
                     return None, None
 
-                self._migration_techniques = [e for e in MigrationTechnique]
+                self._migration_techniques_in_this_run = \
+                    self._migration_techniques.copy()
                 self._current_migration_technique = \
-                    self._migration_techniques.pop(0)
+                    self._migration_techniques_in_this_run.pop(0)
 
                 migration_protocols = self._current_config["serverMigration"]
                 self._current_migration_protocol = \
@@ -201,7 +202,7 @@ class ServerExperimentManager:
                         migration_protocols[protocol] = False
             else:
                 self._current_migration_technique = \
-                    self._migration_techniques.pop(0)
+                    self._migration_techniques_in_this_run.pop(0)
 
             return self._current_config, self._current_migration_technique
 
