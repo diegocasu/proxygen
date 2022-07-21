@@ -62,6 +62,7 @@ class ServerExperimentManager:
              "symmetric"]
         self._current_migration_protocol = None
         self._migration_technique = MigrationTechnique.COLD
+        self._current_memory_inflation = 0
 
         self._base_address_pool = []
         self._current_address_pool = []
@@ -75,6 +76,7 @@ class ServerExperimentManager:
 
         self._results = {"experiment": [], "run": [], "repetition": [],
                          "seed": [], "migrationTechnique": [], "protocol": [],
+                         "memoryFootprintInflation [MB]": [],
                          "preDumpTime [s]": [], "preDumpTxTime [s]": [],
                          "dumpTime [s]": [], "dumpTxTime [s]": [],
                          "dumpSize": [], "preDumpSize": [],
@@ -96,14 +98,19 @@ class ServerExperimentManager:
              "reactiveExplicit",
              "poolOfAddresses3",  # Pool size equal to 3
              "symmetric"]
+        self._migration_protocols_sequence_in_this_run = None
         self._current_migration_protocol = None
 
         self._migration_techniques = [e for e in MigrationTechnique]
         self._migration_techniques_in_this_run = None
         self._current_migration_technique = None
 
+        self._container_memory_inflations = [0, 10, 50, 100]  # Megabytes
+        self._current_memory_inflation = None
+
         self._results = {"experiment": [], "run": [], "repetition": [],
                          "seed": [], "migrationTechnique": [], "protocol": [],
+                         "memoryFootprintInflation [MB]": [],
                          "preDumpTime [s]": [], "preDumpTxTime [s]": [],
                          "dumpTime [s]": [], "dumpTxTime [s]": [],
                          "dumpSize": [], "preDumpSize": [],
@@ -172,10 +179,19 @@ class ServerExperimentManager:
             self._current_config["seed"] = self._current_seed
 
             if not self._migration_techniques_in_this_run:
-                if not self._migration_protocols_sequence:
-                    # All the configurations have been crafted,
-                    # so end the experiment.
-                    return None, None
+                if not self._migration_protocols_sequence_in_this_run:
+                    if not self._container_memory_inflations:
+                        # All the configurations have been crafted,
+                        # so end the experiment.
+                        return None, None
+                    else:
+                        self._migration_protocols_sequence_in_this_run \
+                            = self._migration_protocols_sequence.copy()
+                        self._current_memory_inflation = \
+                            self._container_memory_inflations.pop(0)
+                        self._current_config["memoryFootprintInflation"][
+                            "additionalBytes"] = \
+                            self._current_memory_inflation * 1024 * 1024
 
                 self._migration_techniques_in_this_run = \
                     self._migration_techniques.copy()
@@ -184,7 +200,7 @@ class ServerExperimentManager:
 
                 migration_protocols = self._current_config["serverMigration"]
                 self._current_migration_protocol = \
-                    self._migration_protocols_sequence.pop(0)
+                    self._migration_protocols_sequence_in_this_run.pop(0)
 
                 next_protocol = self._current_migration_protocol
                 if "Explicit" in next_protocol:
@@ -227,6 +243,8 @@ class ServerExperimentManager:
         self._results["migrationTechnique"] \
             .append(self._migration_technique.to_camel_case_string())
         self._results["protocol"].append(self._current_migration_protocol)
+        self._results["memoryFootprintInflation [MB]"] \
+            .append(self._current_memory_inflation)
         self._results["preDumpTime [s]"].append(migration_times["preDumpTime"])
         self._results["preDumpTxTime [s]"] \
             .append(migration_times["preDumpTxTime"])

@@ -16,8 +16,8 @@
     "synchronizedSymmetric": false
   },
   "memoryFootprintInflation": {
-    "enable": false,
-    "additionalBytes": 100000000
+    "enable": true,
+    "additionalBytes": 0
   },
   "seed": 1
 }
