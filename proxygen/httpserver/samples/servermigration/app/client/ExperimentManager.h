@@ -116,7 +116,7 @@ class ExperimentManager
   // Significant service times measured during the experiment, in microseconds.
   std::vector<long> serviceTimes_;
   std::vector<std::string> serverAddresses_;
-  std::vector<bool> firstRequestAfterMigrationTriggered_;
+  int64_t firstRequestAfterMigrationTriggered_{-1};
   std::string serviceTimesFile_{"service_times.json"};
 
   // Variables used during the second experiment to detect when

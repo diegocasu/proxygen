@@ -279,14 +279,14 @@ void ExperimentManager::maybeSaveServiceTime(
       if (requestNumber == triggerMigrationAfterRequest_ + 1) {
         serviceTimes_.push_back(serviceTime);
         serverAddresses_.push_back(serverAddress.describe());
-        firstRequestAfterMigrationTriggered_.push_back(true);
+        firstRequestAfterMigrationTriggered_ = requestNumber;
       }
       return;
     case ExperimentId::SECOND: {
       CHECK_GT(triggerMigrationAfterRequest_, 1);
-      auto migrationTriggered =
-          (requestNumber == triggerMigrationAfterRequest_ + 1) ? true : false;
-      firstRequestAfterMigrationTriggered_.push_back(migrationTriggered);
+      if (requestNumber == triggerMigrationAfterRequest_ + 1) {
+        firstRequestAfterMigrationTriggered_ = requestNumber;
+      }
       serviceTimes_.push_back(serviceTime);
       serverAddresses_.push_back(serverAddress.describe());
 
@@ -324,17 +324,12 @@ void ExperimentManager::dumpServiceTimesToFile() {
     serverAddresses.push_back(address);
   }
 
-  folly::dynamic firstRequestAfterMigrationTriggered = folly::dynamic::array();
-  for (const auto &firstRequest : firstRequestAfterMigrationTriggered_) {
-    firstRequestAfterMigrationTriggered.push_back(firstRequest);
-  }
-
   folly::dynamic dynamic = folly::dynamic::object();
   dynamic["experiment"] = static_cast<int64_t>(experimentId_);
   dynamic["serviceTimes"] = serviceTimes;
   dynamic["serverAddresses"] = serverAddresses;
   dynamic["firstRequestAfterMigrationTriggered"] =
-      firstRequestAfterMigrationTriggered;
+      firstRequestAfterMigrationTriggered_;
 
   auto dynamicJson = folly::toJson(dynamic);
   auto success = folly::writeFile(dynamicJson, serviceTimesFile_.data());
