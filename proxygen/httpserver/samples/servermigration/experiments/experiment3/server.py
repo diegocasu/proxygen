@@ -98,21 +98,19 @@ def parse_migration_notification_time_dump(runc_base, container_name,
             return json.load(app_migration_notification_time_file)
     except:
         logger.error("Cannot parse the migration notification time output file")
-        return None
+        return {}
 
 
 def save_migration_notification_time(total_migration_notification_times,
                                      n_client, protocol, repetition,
                                      migration_notification_time):
-    if migration_notification_time is None:
-        return
-
     total_migration_notification_times["experiment"].append(3)
     total_migration_notification_times["numberOfClients"].append(n_client)
     total_migration_notification_times["protocol"].append(protocol)
     total_migration_notification_times["run"].append(repetition)
     total_migration_notification_times["migrationNotificationTime [us]"] \
-        .append(migration_notification_time["migrationNotificationTime"])
+        .append(migration_notification_time
+                .get("migrationNotificationTime", None))
 
 
 def dump_migration_notification_times(total_migration_notification_times,

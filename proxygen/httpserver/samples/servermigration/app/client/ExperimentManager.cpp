@@ -276,6 +276,13 @@ void ExperimentManager::stopExperimentDueToTimeout(
       return;
     }
     case ExperimentId::THIRD:
+      // The third experiment comprises multiple clients, thus send the
+      // shutdown only if this is the last client. The latter is the only
+      // one with a value of notifyImminentMigrationAfterRequest_ greater
+      // than zero.
+      if (notifyImminentMigrationAfterRequest_ > 0) {
+        stopExperiment(false);
+      }
       return;
   }
   LOG(ERROR) << "Unknown experiment ID. Stopping the manager";
