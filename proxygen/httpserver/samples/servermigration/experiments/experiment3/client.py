@@ -147,7 +147,7 @@ def wait_for_last_client_termination(container_names):
             logger.info("Last client terminated")
             break
 
-        time.sleep(5)
+        time.sleep(2)
 
 
 def main():
