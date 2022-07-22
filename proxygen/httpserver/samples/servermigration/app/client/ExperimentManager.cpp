@@ -251,6 +251,36 @@ bool ExperimentManager::maybeStopExperiment(
   folly::assume_unreachable();
 }
 
+void ExperimentManager::stopExperimentDueToTimeout(
+    const folly::IPAddress &currentPeerAddress) {
+  switch (experimentId_) {
+    case ExperimentId::QUIC_BASELINE:
+      return;
+    case ExperimentId::FIRST:
+    case ExperimentId::SECOND: {
+      auto currentManagementAddress = folly::SocketAddress(
+          currentPeerAddress, serverManagementAddress_.getPort());
+      if (currentManagementAddress != serverManagementAddress_) {
+        // The timeout happened before the path validation completion,
+        // so manually update the management address before sending
+        // the shutdown command.
+        VLOG(1) << fmt::format(
+            "Timeout happened before completing the path validation. "
+            "Updating the management address from {} to {}",
+            serverManagementAddress_.describe(),
+            currentManagementAddress.describe());
+        serverManagementAddress_ = currentManagementAddress;
+      }
+      stopExperiment(true);
+      return;
+    }
+    case ExperimentId::THIRD:
+      return;
+  }
+  LOG(ERROR) << "Unknown experiment ID. Stopping the manager";
+  folly::assume_unreachable();
+}
+
 void ExperimentManager::maybeSaveServiceTime(
     const int64_t &requestNumber,
     const long &serviceTime,

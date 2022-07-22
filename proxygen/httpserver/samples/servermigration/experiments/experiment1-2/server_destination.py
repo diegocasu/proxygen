@@ -118,11 +118,11 @@ def save_restore_times(total_restore_times, restore_times, experiment_manager):
         experiment_manager._current_repetition)
     total_restore_times["restoreTime [s]"].append(restore_times["restoreTime"])
     total_restore_times["lazyPagesTxTime [s]"] \
-        .append(restore_times["lazyPagesTxTime"])
+        .append(restore_times.get("lazyPagesTxTime", None))
     total_restore_times["lazyPagesTxEndTime [s]"] \
-        .append(restore_times["lazyPagesTxEndTime"])
+        .append(restore_times.get("lazyPagesTxEndTime", None))
     total_restore_times["numberOfLazyPages"] \
-        .append(restore_times["numberOfLazyPages"])
+        .append(restore_times.get("numberOfLazyPages", None))
 
 
 def dump_restore_times(total_restore_times, experiment,
@@ -193,8 +193,20 @@ def main():
                         console_socket_file, container_name,
                         total_restore_times, args.experiment)
 
-        # Wait for a server migration and handle it.
+        # Wait for a server migration and handle it. If the latter is replaced
+        # by a shutdown command, skip the execution to the next cycle.
         restore_times = wait_for_server_migration(migration_socket)
+        if not restore_times:
+            # Save empty measurements and sleep before starting a new run.
+            save_restore_times(total_restore_times, restore_times,
+                               experiment_manager)
+            stop_container_and_console_socket(console_socket_proc,
+                                              console_socket_file,
+                                              container_name)
+            logger.info("Run interrupted due to an application error")
+            logger.info("Sleeping for 5 seconds before the next run")
+            time.sleep(5)
+            continue
 
         # Notify the server about the network switch.
         # Since the server and the script are going to run on the same

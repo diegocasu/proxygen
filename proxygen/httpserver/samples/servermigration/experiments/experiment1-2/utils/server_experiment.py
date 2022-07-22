@@ -245,30 +245,35 @@ class ServerExperimentManager:
         self._results["protocol"].append(self._current_migration_protocol)
         self._results["memoryFootprintInflation [MB]"] \
             .append(self._current_memory_inflation)
-        self._results["preDumpTime [s]"].append(migration_times["preDumpTime"])
+        self._results["preDumpTime [s]"] \
+            .append(migration_times.get("preDumpTime", None))
         self._results["preDumpTxTime [s]"] \
-            .append(migration_times["preDumpTxTime"])
-        self._results["dumpTime [s]"].append(migration_times["dumpTime"])
-        self._results["dumpTxTime [s]"].append(migration_times["dumpTxTime"])
-        self._results["dumpSize"].append(migration_times["dumpSize"])
-        self._results["preDumpSize"].append(migration_times["preDumpSize"])
+            .append(migration_times.get("preDumpTxTime", None))
+        self._results["dumpTime [s]"] \
+            .append(migration_times.get("dumpTime", None))
+        self._results["dumpTxTime [s]"] \
+            .append(migration_times.get("dumpTxTime", None))
+        self._results["dumpSize"] \
+            .append(migration_times.get("dumpSize", None))
+        self._results["preDumpSize"] \
+            .append(migration_times.get("preDumpSize", None))
         self._results["compressionEnabled"].append(compression_enabled)
         self._results["rsyncPreDumpTotalFileSize"] \
-            .append(migration_times["rsyncPreDumpTotalFileSize"])
+            .append(migration_times.get("rsyncPreDumpTotalFileSize", None))
         self._results["rsyncPreDumpTotalBytesSent"] \
-            .append(migration_times["rsyncPreDumpTotalBytesSent"])
+            .append(migration_times.get("rsyncPreDumpTotalBytesSent", None))
         self._results["rsyncPreDumpTransferRate"] \
-            .append(migration_times["rsyncPreDumpTransferRate"])
+            .append(migration_times.get("rsyncPreDumpTransferRate", None))
         self._results["rsyncPreDumpCompressionSpeedup"] \
-            .append(migration_times["rsyncPreDumpCompressionSpeedup"])
+            .append(migration_times.get("rsyncPreDumpCompressionSpeedup", None))
         self._results["rsyncDumpTotalFileSize"] \
-            .append(migration_times["rsyncDumpTotalFileSize"])
+            .append(migration_times.get("rsyncDumpTotalFileSize", None))
         self._results["rsyncDumpTotalBytesSent"] \
-            .append(migration_times["rsyncDumpTotalBytesSent"])
+            .append(migration_times.get("rsyncDumpTotalBytesSent", None))
         self._results["rsyncDumpTransferRate"] \
-            .append(migration_times["rsyncDumpTransferRate"])
+            .append(migration_times.get("rsyncDumpTransferRate", None))
         self._results["rsyncDumpCompressionSpeedup"] \
-            .append(migration_times["rsyncDumpCompressionSpeedup"])
+            .append(migration_times.get("rsyncDumpCompressionSpeedup", None))
 
     def dump_experiment_results_to_file(self, call_from_exit_handler=False):
         df = pd.DataFrame(self._results)

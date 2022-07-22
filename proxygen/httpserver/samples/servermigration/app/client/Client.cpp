@@ -313,6 +313,10 @@ void Client::scheduleRequests() {
     if (!gotResponse) {
       LOG(ERROR) << "Connection timeout while waiting for the response. "
                     "Stopping the client";
+      experimentManager_->stopExperimentDueToTimeout(
+          quicClient_->getPeerAddress().getIPAddress());
+      // Do not save the measurements to notify that
+      // the execution ended with an error.
       break;
     }
     getAndPrintReceivedResponse();

@@ -141,18 +141,17 @@ class ClientExperimentManager:
         return None
 
     def save_service_times(self, service_times):
-        if service_times is None:
-            logger.info("Ignoring empty service times")
-            return
         self._results["experiment"].append(self._id)
         self._results["run"].append(self._current_run)
         self._results["repetition"].append(self._current_repetition)
         self._results["seed"].append(self._current_seed)
-        self._results["serviceTimes [us]"].append(service_times["serviceTimes"])
+        self._results["serviceTimes [us]"] \
+            .append(service_times.get("serviceTimes", None))
         self._results["serverAddresses"] \
-            .append(service_times["serverAddresses"])
+            .append(service_times.get("serverAddresses", None))
         self._results["firstRequestAfterMigrationTriggered"] \
-            .append(service_times["firstRequestAfterMigrationTriggered"])
+            .append(service_times
+                    .get("firstRequestAfterMigrationTriggered", None))
 
     def dump_experiment_results_to_file(self, call_from_exit_handler=False):
         df = pd.DataFrame(self._results)

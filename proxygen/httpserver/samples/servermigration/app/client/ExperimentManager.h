@@ -33,6 +33,7 @@ class ExperimentManager
   void maybeSaveServiceTime(const int64_t& requestNumber,
                             const long& serviceTime,
                             const folly::SocketAddress& serverAddress);
+  void stopExperimentDueToTimeout(const folly::IPAddress& currentPeerAddress);
   void dumpServiceTimesToFile();
 
   /**

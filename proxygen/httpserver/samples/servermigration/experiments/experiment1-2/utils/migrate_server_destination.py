@@ -74,6 +74,8 @@ def _handle_server_migration(conn, addr):
 
     try:
         msg = json.loads(data)
+        if msg.get("action", None) == "shutdown":
+            return {}
         if "restore" not in msg:
             logger.error("Unknown request: '{}'".format(msg))
             _error()

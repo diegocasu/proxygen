@@ -92,7 +92,7 @@ def create_command_socket():
         sys.exit(1)
 
 
-def wait_for_migration_command(command_socket):
+def wait_for_migration_command(command_socket, destination_ip):
     logger.info("Waiting for the migration command")
     while True:
         message, address = command_socket.recvfrom(1024)
@@ -104,8 +104,23 @@ def wait_for_migration_command(command_socket):
             logger.info("Sending response: OK")
             response = "OK"
             command_socket.sendto(response.encode(), address)
-            return
+            return True
 
+        try:
+            command = json.loads(message)
+            if command["action"] == "shutdown":
+                logger.info("Sending response: OK")
+                response = "OK"
+                command_socket.sendto(response.encode(), address)
+
+                # Forward the shutdown command to the migration
+                # server running on destination.
+                sock = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
+                sock.connect((destination_ip, 18863))
+                sock.send(message.encode())
+                return False
+        except:
+            pass
         logger.info("Ignoring message")
 
 
@@ -178,8 +193,21 @@ def main():
         atexit.register(exit_handler, command_socket, console_socket_proc,
                         console_socket_file, container_name, experiment_manager)
 
-        # Wait for migration command.
-        wait_for_migration_command(command_socket)
+        # Wait for migration command. If the latter is replaced by
+        # a shutdown command, skip the execution to the next cycle.
+        migrate = wait_for_migration_command(command_socket,
+                                             args.destination_ip)
+        if migrate is False:
+            # Save empty measurements and sleep before starting a new run.
+            experiment_manager \
+                .save_migration_measurements({}, args.enable_compression)
+            stop_container_and_console_socket(console_socket_proc,
+                                              console_socket_file,
+                                              container_name)
+            logger.info("Run interrupted due to an application error")
+            logger.info("Sleeping for 5 seconds before the next run")
+            time.sleep(5)
+            continue
 
         # Start migration.
         migration_measurements = start_migration(runc_base,
