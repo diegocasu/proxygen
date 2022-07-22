@@ -38,6 +38,7 @@ class RequestScheduler {
   };
 
   RequestScheduler(const Pattern& pattern,
+                   const int64_t& sporadicInterval,
                    const Body& body,
                    const uint32_t& seedRequestType,
                    const uint32_t& seedPostBodyDimension);
@@ -48,8 +49,8 @@ class RequestScheduler {
 
   Pattern pattern_;
   Body body_;
+  std::chrono::seconds sporadicInterval_;
   bool firstRequest_{true};
-  std::chrono::seconds sporadicPeriod_{10};
   size_t fixedBodySize_{1024};
 
   // Attributes used to randomly extract the type of the request when using

@@ -12,11 +12,13 @@ RequestScheduler::Request::Request(proxygen::URL url,
 }
 
 RequestScheduler::RequestScheduler(const Pattern& pattern,
+                                   const int64_t& sporadicInterval,
                                    const Body& body,
                                    const uint32_t& seedRequestType,
                                    const uint32_t& seedPostBodyDimension)
     : pattern_(pattern),
       body_(body),
+      sporadicInterval_(sporadicInterval),
       seedRequestType_(seedRequestType),
       seedPostBodyDimension_(seedPostBodyDimension) {
   requestTypePrng_.seed(seedRequestType_);
@@ -41,8 +43,8 @@ RequestScheduler::Request RequestScheduler::nextRequest() {
   if (pattern_ == Pattern::SPORADIC && !firstRequest_) {
     VLOG(1) << fmt::format(
         "Waiting for {} seconds before generating the next request",
-        sporadicPeriod_.count());
-    std::this_thread::sleep_for(sporadicPeriod_);
+        sporadicInterval_.count());
+    std::this_thread::sleep_for(sporadicInterval_);
   }
   firstRequest_ = false;
 

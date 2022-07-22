@@ -27,11 +27,13 @@ void Client::generateSeeds() {
 void Client::initializeRequestScheduler(const folly::dynamic& config) {
   folly::Optional<RequestScheduler::Pattern> pattern;
   folly::Optional<RequestScheduler::Body> body;
+  int64_t sporadicInterval{0};
   auto requestPatternConfig = config["requestPattern"];
   auto requestBodyConfig = config["requestBody"];
 
   if (requestPatternConfig["sporadic"].asBool()) {
     pattern = RequestScheduler::Pattern::SPORADIC;
+    sporadicInterval = requestPatternConfig["sporadicInterval"].asInt();
   } else if (requestPatternConfig["backToBack"].asBool()) {
     pattern = RequestScheduler::Pattern::BACK_TO_BACK;
   } else {
@@ -51,6 +53,7 @@ void Client::initializeRequestScheduler(const folly::dynamic& config) {
   }
   requestScheduler_ =
       std::make_unique<RequestScheduler>(pattern.value(),
+                                         sporadicInterval,
                                          body.value(),
                                          seeds_.requestType,
                                          seeds_.postBodyDimension);

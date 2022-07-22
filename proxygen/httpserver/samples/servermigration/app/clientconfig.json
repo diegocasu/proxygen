@@ -34,12 +34,14 @@
   /*
    * Set the pattern adopted by the client when sending requests to
    * the server. "sporadic" means that a new request is sent after
-   * 10 seconds from the reception of the previous response; "backToBack"
-   * means that a new request is sent as soon as the previous response
-   * is received.
+   * a number of seconds equal to "sporadicInterval" from the reception
+   * of the previous response; "backToBack" means that a new request is
+   * sent as soon as the previous response is received.
+   * If "sporadic": false, the value of "sporadicInterval" is ignored.
    */
   "requestPattern": {
     "sporadic": true,
+    "sporadicInterval": 10,
     "backToBack": false
   },
 
