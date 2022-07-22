@@ -102,8 +102,10 @@ void MigrationManagementInterface::onConnectionClose(
   }
   transports_.erase(serverConnectionId);
   if (numberOfTransportsReady_ == transports_.size() && !transportsReady_) {
-    VLOG(1) << "Server ready for migration";
+    migrationReadyTime_ = std::chrono::steady_clock::now();
+    numberOfClientsReadyForMigration_ = numberOfTransportsReady_;
     transportsReady_ = true;
+    VLOG(1) << "Server ready for migration";
   }
 }
 
@@ -127,6 +129,7 @@ void MigrationManagementInterface::onServerMigrationReady(
   ++numberOfTransportsReady_;
   if (numberOfTransportsReady_ == transports_.size()) {
     migrationReadyTime_ = std::chrono::steady_clock::now();
+    numberOfClientsReadyForMigration_ = numberOfTransportsReady_;
     transportsReady_ = true;
     VLOG(1) << "Server ready for migration";
   }
@@ -221,8 +224,10 @@ void MigrationManagementInterface::handleOnImminentServerMigrationCommand(
     // to onServerMigrationFailed() or onServerMigrationReady() happen.
     std::lock_guard<std::mutex> guard(migrationMutex_);
     if (transports_.empty() && !transportsReady_) {
-      VLOG(1) << "Server ready for migration";
+      migrationReadyTime_ = std::chrono::steady_clock::now();
+      numberOfClientsReadyForMigration_ = numberOfTransportsReady_;
       transportsReady_ = true;
+      VLOG(1) << "Server ready for migration";
     }
   }
   socket_->write(client, folly::IOBuf::copyBuffer("OK"));
@@ -292,16 +297,21 @@ void MigrationManagementInterface::onDataAvailable(
 
 void MigrationManagementInterface::dumpMigrationNotificationTimeToFile() {
   folly::dynamic dynamic = folly::dynamic::object();
-  if (migrationReadyTime_ && migrationNotificationReceptionTime_) {
+  dynamic["migrationNotificationTime"] = nullptr;
+  dynamic["numberOfClientsReadyForMigration"] = nullptr;
+
+  if (migrationReadyTime_ && migrationNotificationReceptionTime_ &&
+      numberOfClientsReadyForMigration_) {
     auto migrationNotificationTime =
         std::chrono::duration_cast<std::chrono::microseconds>(
             migrationReadyTime_.value() -
             migrationNotificationReceptionTime_.value())
             .count();
     dynamic["migrationNotificationTime"] = migrationNotificationTime;
-  } else {
-    dynamic["migrationNotificationTime"] = nullptr;
+    dynamic["numberOfClientsReadyForMigration"] =
+        numberOfClientsReadyForMigration_.value();
   }
+
   auto dynamicJson = folly::toJson(dynamic);
   auto success =
       folly::writeFile(dynamicJson, migrationNotificationTimeFile_.data());

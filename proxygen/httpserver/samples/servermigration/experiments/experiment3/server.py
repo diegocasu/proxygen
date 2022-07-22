@@ -105,12 +105,16 @@ def save_migration_notification_time(total_migration_notification_times,
                                      n_client, protocol, repetition,
                                      migration_notification_time):
     total_migration_notification_times["experiment"].append(3)
-    total_migration_notification_times["numberOfClients"].append(n_client)
     total_migration_notification_times["protocol"].append(protocol)
     total_migration_notification_times["run"].append(repetition)
     total_migration_notification_times["migrationNotificationTime [us]"] \
         .append(migration_notification_time
                 .get("migrationNotificationTime", None))
+    total_migration_notification_times["expectedNumberOfClients"] \
+        .append(n_client)
+    total_migration_notification_times["actualNumberOfClients"] \
+        .append(migration_notification_time
+                .get("numberOfClientsReadyForMigration", None))
 
 
 def dump_migration_notification_times(total_migration_notification_times,

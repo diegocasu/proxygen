@@ -149,15 +149,11 @@ class MigrationManagementInterface
   // Migration notification time measured during the session. The value is
   // significant only if recorded during the third experiment, where a single
   // migration is performed with multiple clients connected at the same time.
-  // Note that the migration notification time is recorded only if all the
-  // clients become ready for the migration, thus it is not recorded when the
-  // migration ready state is achieved due to:
-  // 1) no clients connected to the server;
-  // 2) one or more clients closing the connection.
   folly::Optional<std::chrono::time_point<std::chrono::steady_clock>>
       migrationNotificationReceptionTime_;
   folly::Optional<std::chrono::time_point<std::chrono::steady_clock>>
       migrationReadyTime_;
+  folly::Optional<unsigned int> numberOfClientsReadyForMigration_;
   std::string migrationNotificationTimeFile_{
       "migration_notification_time.json"};
 };
