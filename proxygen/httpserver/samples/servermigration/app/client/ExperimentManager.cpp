@@ -100,8 +100,7 @@ void ExperimentManager::waitForResponseOrRetransmit(
   }
 }
 
-void ExperimentManager::
-    handleFirstSecondThirdExperimentNotifyImminentServerMigration() {
+void ExperimentManager::notifyImminentServerMigration() {
   MigrationManagementInterface::Command command;
   command.action =
       MigrationManagementInterface::Action::ON_IMMINENT_SERVER_MIGRATION;
@@ -120,7 +119,7 @@ void ExperimentManager::
   waitForResponseOrRetransmit(serverManagementAddress_, jsonCommand);
 }
 
-void ExperimentManager::handleFirstAndSecondExperimentTriggerServerMigration() {
+void ExperimentManager::triggerServerMigration() {
   // Drain the connection before triggering the server migration, so that all
   // the control stream frames are acknowledged by the time the server migrates.
   // Without this drain period, a PTO related to control stream frames could
@@ -141,31 +140,7 @@ void ExperimentManager::handleFirstAndSecondExperimentTriggerServerMigration() {
                               migrateCommand_);
 }
 
-void ExperimentManager::handleFirstAndSecondExperimentStopExperiment() {
-  MigrationManagementInterface::Command command;
-  command.action = MigrationManagementInterface::Action::SHUTDOWN;
-  auto jsonCommand = managementCommandToJsonString(command);
-
-  // Send the command both to the server application
-  // and the container migration script.
-  VLOG(1) << fmt::format("Sending command={} to server management={}",
-                         jsonCommand,
-                         serverManagementAddress_.describe());
-  responseBaton_.reset();
-  socket_->write(serverManagementAddress_,
-                 folly::IOBuf::copyBuffer(jsonCommand));
-  waitForResponseOrRetransmit(serverManagementAddress_, jsonCommand);
-
-  VLOG(1) << fmt::format("Sending command={} to migration script={}",
-                         jsonCommand,
-                         containerMigrationScriptAddress_.describe());
-  responseBaton_.reset();
-  socket_->write(containerMigrationScriptAddress_,
-                 folly::IOBuf::copyBuffer(jsonCommand));
-  waitForResponseOrRetransmit(containerMigrationScriptAddress_, jsonCommand);
-}
-
-void ExperimentManager::handleQuicBaselineAndThirdExperimentStopExperiment() {
+void ExperimentManager::stopExperiment(bool shutdownContainerMigrationScript) {
   MigrationManagementInterface::Command command;
   command.action = MigrationManagementInterface::Action::SHUTDOWN;
   auto jsonCommand = managementCommandToJsonString(command);
@@ -177,6 +152,16 @@ void ExperimentManager::handleQuicBaselineAndThirdExperimentStopExperiment() {
   socket_->write(serverManagementAddress_,
                  folly::IOBuf::copyBuffer(jsonCommand));
   waitForResponseOrRetransmit(serverManagementAddress_, jsonCommand);
+
+  if (shutdownContainerMigrationScript) {
+    VLOG(1) << fmt::format("Sending command={} to migration script={}",
+                           jsonCommand,
+                           containerMigrationScriptAddress_.describe());
+    responseBaton_.reset();
+    socket_->write(containerMigrationScriptAddress_,
+                   folly::IOBuf::copyBuffer(jsonCommand));
+    waitForResponseOrRetransmit(containerMigrationScriptAddress_, jsonCommand);
+  }
 }
 
 void ExperimentManager::maybeNotifyImminentServerMigration(
@@ -187,7 +172,7 @@ void ExperimentManager::maybeNotifyImminentServerMigration(
     case ExperimentId::FIRST:
     case ExperimentId::SECOND:
       if (numberOfCompletedRequests == notifyImminentMigrationAfterRequest_) {
-        handleFirstSecondThirdExperimentNotifyImminentServerMigration();
+        notifyImminentServerMigration();
       }
       return;
     case ExperimentId::THIRD:
@@ -196,7 +181,7 @@ void ExperimentManager::maybeNotifyImminentServerMigration(
       // value of notifyImminentMigrationAfterRequest_ greater than zero.
       if (notifyImminentMigrationAfterRequest_ > 0 &&
           numberOfCompletedRequests == notifyImminentMigrationAfterRequest_) {
-        handleFirstSecondThirdExperimentNotifyImminentServerMigration();
+        notifyImminentServerMigration();
       }
       return;
   }
@@ -212,7 +197,7 @@ bool ExperimentManager::maybeTriggerServerMigration(
     case ExperimentId::FIRST:
     case ExperimentId::SECOND:
       if (numberOfCompletedRequests == triggerMigrationAfterRequest_) {
-        handleFirstAndSecondExperimentTriggerServerMigration();
+        triggerServerMigration();
         return proactiveExplicit_;
       }
       return false;
@@ -228,13 +213,13 @@ bool ExperimentManager::maybeStopExperiment(
   switch (experimentId_) {
     case ExperimentId::QUIC_BASELINE:
       if (numberOfCompletedRequests == shutdownAfterRequest_) {
-        handleQuicBaselineAndThirdExperimentStopExperiment();
+        stopExperiment(false);
         return true;
       }
       return false;
     case ExperimentId::FIRST:
       if (numberOfCompletedRequests == shutdownAfterRequest_) {
-        handleFirstAndSecondExperimentStopExperiment();
+        stopExperiment(true);
         return true;
       }
       return false;
@@ -242,7 +227,7 @@ bool ExperimentManager::maybeStopExperiment(
       if (firstResponseFromNewServerAddressReceived_) {
         --responsesFromNewServerAddressBeforeShutdown_;
         if (responsesFromNewServerAddressBeforeShutdown_ <= 0) {
-          handleFirstAndSecondExperimentStopExperiment();
+          stopExperiment(true);
           return true;
         }
       }
@@ -254,7 +239,7 @@ bool ExperimentManager::maybeStopExperiment(
         // one with a value of notifyImminentMigrationAfterRequest_ greater
         // than zero.
         if (notifyImminentMigrationAfterRequest_ > 0) {
-          handleQuicBaselineAndThirdExperimentStopExperiment();
+          stopExperiment(false);
         }
         return true;
       }

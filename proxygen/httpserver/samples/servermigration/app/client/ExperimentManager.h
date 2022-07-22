@@ -79,10 +79,9 @@ class ExperimentManager
 
   void waitForResponseOrRetransmit(const folly::SocketAddress& destination,
                                    const std::string& message);
-  void handleFirstSecondThirdExperimentNotifyImminentServerMigration();
-  void handleFirstAndSecondExperimentTriggerServerMigration();
-  void handleFirstAndSecondExperimentStopExperiment();
-  void handleQuicBaselineAndThirdExperimentStopExperiment();
+  void notifyImminentServerMigration();
+  void triggerServerMigration();
+  void stopExperiment(bool shutdownContainerMigrationScript);
 
   // Information used to drive the experiment.
   ExperimentId experimentId_;
