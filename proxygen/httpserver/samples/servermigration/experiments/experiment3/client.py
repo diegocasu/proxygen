@@ -103,10 +103,23 @@ def stop_all_containers_and_console_sockets(container_names,
                                             console_socket_files,
                                             console_socket_processes):
     for i in range(0, len(container_names)):
-        # Possibly stop the container and the console socket.
         cmd = "sudo runc kill {} KILL".format(container_names[i])
-        logger.info("Running '{}'".format(cmd))
-        os.system(cmd)
+        while True:
+            # Repeatedly try to kill the container until the command succeeds.
+            logger.info("Running '{}'".format(cmd))
+            os.system(cmd)
+            runc_list_cmd = "sudo runc list -f json"
+            runc_list_cmd_output = subprocess.run(runc_list_cmd,
+                                                  stdout=subprocess.PIPE,
+                                                  shell=True).stdout.decode()
+            if runc_list_cmd_output == "null":
+                break
+            container_list = json.loads(runc_list_cmd_output)
+            client = next((container for container in container_list if
+                           container["id"] == container_names[i]), None)
+            if client is None or client["status"] == "stopped":
+                break
+            time.sleep(0.2)
 
         cmd = "sudo runc delete " + container_names[i]
         logger.info("Running '{}'".format(cmd))
@@ -127,7 +140,6 @@ def wait_for_last_client_termination(container_names):
             break
 
         container_list = json.loads(cmd_output)
-
         client = next((container for container in container_list if
                        container["id"] == container_names[-1]), None)
 
@@ -183,7 +195,7 @@ def main():
                                 console_socket_processes)
 
                 # Wait until the end of the experiment, namely
-                # until at least the last client container stop.
+                # until the last client container stops.
                 wait_for_last_client_termination(container_names)
 
                 # Force console sockets and containers
