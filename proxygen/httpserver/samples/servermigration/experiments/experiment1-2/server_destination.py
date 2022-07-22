@@ -195,8 +195,6 @@ def main():
 
         # Wait for a server migration and handle it.
         restore_times = wait_for_server_migration(migration_socket)
-        save_restore_times(total_restore_times, restore_times,
-                           experiment_manager)
 
         # Notify the server about the network switch.
         # Since the server and the script are going to run on the same
@@ -208,6 +206,10 @@ def main():
                     .format(json.dumps(switch_command),
                             args.management_ip,
                             args.management_port))
+
+        # Save restore times.
+        save_restore_times(total_restore_times, restore_times,
+                           experiment_manager)
 
         # Wait until the end of the experiment,
         # namely until the server container stops.
