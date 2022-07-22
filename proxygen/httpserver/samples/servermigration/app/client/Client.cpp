@@ -156,9 +156,11 @@ void Client::initializeServerMigrationSettings(const folly::dynamic& config) {
 void Client::initializeTransportSettings() {
   // Use the default settings of mvfst, except for the ones that
   // prevent server/client migration or limit the experiments.
-  // By default, the congestion controller is Cubic and the idle
-  // timeout is 60 seconds.
+  // By default, the congestion controller is Cubic.
   TransportSettings settings;
+
+  // Increase the idle timeout to 120 seconds.
+  settings.idleTimeout = kDefaultIdleTimeout * 2;
 
   // Set the number of advertised streams to the
   // maximum allowed by the standard.

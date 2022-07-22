@@ -70,7 +70,7 @@ class Client
   folly::fibers::Baton startDone_;
   std::seed_seq seedSequence_;
   Seeds seeds_;
-  std::chrono::milliseconds transactionsTimeout_{kDefaultIdleTimeout};
+  std::chrono::milliseconds transactionsTimeout_{kDefaultIdleTimeout * 2};
   std::chrono::milliseconds connectionTimeout_{std::chrono::seconds(5)};
   bool connectionFailed_{false};
 

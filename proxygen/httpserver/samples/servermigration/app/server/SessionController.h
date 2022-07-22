@@ -41,7 +41,7 @@ class SessionController
   // Plain pointer to avoid circular references.
   proxygen::HQSession* session_{nullptr};
   HandlerDispatcher handlerDispatcher_;
-  std::chrono::milliseconds transactionsTimeout_{kDefaultIdleTimeout};
+  std::chrono::milliseconds transactionsTimeout_{kDefaultIdleTimeout * 2};
 };
 
 } // namespace quic::samples::servermigration
