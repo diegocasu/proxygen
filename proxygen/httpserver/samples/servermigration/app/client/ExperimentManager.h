@@ -80,7 +80,7 @@ class ExperimentManager
   void waitForResponseOrRetransmit(const folly::SocketAddress& destination,
                                    const std::string& message);
   void notifyImminentServerMigration();
-  void triggerServerMigration();
+  void triggerServerMigration(bool drain);
   void stopExperiment(bool shutdownContainerMigrationScript);
 
   // Information used to drive the experiment.
