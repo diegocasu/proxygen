@@ -255,6 +255,7 @@ void ExperimentManager::stopExperimentDueToTimeout(
     const folly::IPAddress &currentPeerAddress) {
   switch (experimentId_) {
     case ExperimentId::QUIC_BASELINE:
+      stopExperiment(false);
       return;
     case ExperimentId::FIRST:
     case ExperimentId::SECOND: {

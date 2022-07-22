@@ -73,7 +73,7 @@ def parse_and_delete_service_times_dump(runc_base, container_name,
         return service_times
     except:
         logger.error("Cannot parse the service times dump file")
-        return None
+        return {}
 
 
 def save_service_times(total_service_times, service_times, repetition, seed):
@@ -84,9 +84,9 @@ def save_service_times(total_service_times, service_times, repetition, seed):
     total_service_times["repetition"].append(repetition)
     total_service_times["seed"].append(seed)
     total_service_times["serviceTimes [us]"] \
-        .append(service_times["serviceTimes"])
+        .append(service_times.get("serviceTimes", None))
     total_service_times["serverAddresses"] \
-        .append(service_times["serverAddresses"])
+        .append(service_times.get("serverAddresses", None))
     total_service_times["protocol"] = "quicBaseline"
 
 
