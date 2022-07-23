@@ -69,10 +69,13 @@ class ClientExperimentManager:
              "reactiveExplicit",
              "poolOfAddresses",  # Pool size equal to 3
              "symmetric"]
+        self._current_migration_protocols_sequence = None
 
-        # Use the same protocol with all the migration techniques.
         self._n_migration_techniques = len(MigrationTechnique)
         self._current_migration_technique = 0
+
+        self._n_container_memory_inflations = len([0, 10, 50, 100])
+        self._current_container_memory_inflation = 0
 
         self._results = {"experiment": [], "run": [], "repetition": [],
                          "seed": [], "serviceTimes [us]": [],
@@ -106,8 +109,11 @@ class ClientExperimentManager:
         if self._current_repetition >= self._n_repetitions_per_run \
                 or self._current_run == 0:
             if self._current_run == 0:
+                self._current_container_memory_inflation += 1
+                self._current_migration_protocols_sequence = \
+                    self._migration_protocols_sequence.copy()
                 self._current_config["experiment"]["serverMigrationProtocol"] = \
-                    self._migration_protocols_sequence.pop(0)
+                    self._current_migration_protocols_sequence.pop(0)
 
             self._current_run += 1
             self._current_repetition = 1
@@ -115,14 +121,19 @@ class ClientExperimentManager:
             self._current_migration_technique += 1
 
             if self._current_migration_technique > self._n_migration_techniques:
-                if not self._migration_protocols_sequence:
-                    # All the configurations have been crafted,
-                    # so end the experiment.
-                    return None
+                if not self._current_migration_protocols_sequence:
+                    self._current_container_memory_inflation += 1
+                    if self._current_container_memory_inflation > \
+                            self._n_container_memory_inflations:
+                        # All the configurations have been crafted,
+                        # so end the experiment.
+                        return None
+                    self._current_migration_protocols_sequence = \
+                        self._migration_protocols_sequence.copy()
 
                 self._current_migration_technique = 1
                 self._current_config["experiment"]["serverMigrationProtocol"] = \
-                    self._migration_protocols_sequence.pop(0)
+                    self._current_migration_protocols_sequence.pop(0)
 
             self._current_config["seed"] = self._current_seed
             return self._current_config
