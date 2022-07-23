@@ -184,14 +184,13 @@ class ServerExperimentManager:
                         # All the configurations have been crafted,
                         # so end the experiment.
                         return None, None
-                    else:
-                        self._migration_protocols_sequence_in_this_run \
-                            = self._migration_protocols_sequence.copy()
-                        self._current_memory_inflation = \
-                            self._container_memory_inflations.pop(0)
-                        self._current_config["memoryFootprintInflation"][
-                            "additionalBytes"] = \
-                            self._current_memory_inflation * 1024 * 1024
+                    self._migration_protocols_sequence_in_this_run = \
+                        self._migration_protocols_sequence.copy()
+                    self._current_memory_inflation = \
+                        self._container_memory_inflations.pop(0)
+                    self._current_config["memoryFootprintInflation"][
+                        "additionalBytes"] = \
+                        self._current_memory_inflation * 1024 * 1024
 
                 self._migration_techniques_in_this_run = \
                     self._migration_techniques.copy()
