@@ -148,7 +148,9 @@ def main():
     protocols = ["reactiveExplicit", "symmetric"]
     n_repetitions = args.repetitions
     total_migration_notification_times = {"experiment": [], "run": [],
-                                          "numberOfClients": [], "protocol": [],
+                                          "protocol": [],
+                                          "expectedNumberOfClients": [],
+                                          "actualNumberOfClients": [],
                                           "migrationNotificationTime [us]": []}
 
     for protocol in protocols:
