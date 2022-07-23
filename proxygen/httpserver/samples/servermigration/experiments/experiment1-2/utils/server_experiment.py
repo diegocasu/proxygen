@@ -61,7 +61,7 @@ class ServerExperimentManager:
              "poolOfAddresses3",  # Pool size equal to 3
              "symmetric"]
         self._current_migration_protocol = None
-        self._migration_technique = MigrationTechnique.COLD
+        self._current_migration_technique = MigrationTechnique.COLD
         self._current_memory_inflation = 0
 
         self._base_address_pool = []
@@ -163,12 +163,12 @@ class ServerExperimentManager:
                 else:
                     migration_protocols[protocol] = False
 
-            return self._current_config, self._migration_technique
+            return self._current_config, self._current_migration_technique
 
         self._current_repetition += 1
         self._current_seed += 1
         self._current_config["seed"] = self._current_seed
-        return self._current_config, self._migration_technique
+        return self._current_config, self._current_migration_technique
 
     def _get_new_config_second_experiment(self):
         if self._current_repetition >= self._n_repetitions_per_run \
@@ -241,7 +241,7 @@ class ServerExperimentManager:
         self._results["repetition"].append(self._current_repetition)
         self._results["seed"].append(self._current_seed)
         self._results["migrationTechnique"] \
-            .append(self._migration_technique.to_camel_case_string())
+            .append(self._current_migration_technique.to_camel_case_string())
         self._results["protocol"].append(self._current_migration_protocol)
         self._results["memoryFootprintInflation [MB]"] \
             .append(self._current_memory_inflation)
