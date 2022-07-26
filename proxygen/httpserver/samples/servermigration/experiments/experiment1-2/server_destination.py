@@ -116,7 +116,8 @@ def save_restore_times(total_restore_times, restore_times, experiment_manager):
     total_restore_times["run"].append(experiment_manager._current_run)
     total_restore_times["repetition"].append(
         experiment_manager._current_repetition)
-    total_restore_times["restoreTime [s]"].append(restore_times["restoreTime"])
+    total_restore_times["restoreTime [s]"] \
+        .append(restore_times.get("restoreTime", None))
     total_restore_times["lazyPagesTxTime [s]"] \
         .append(restore_times.get("lazyPagesTxTime", None))
     total_restore_times["lazyPagesTxEndTime [s]"] \
