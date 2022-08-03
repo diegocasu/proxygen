@@ -14,7 +14,7 @@
   },
   "requestPattern": {
     "sporadic": true,
-    "sporadicInterval": 5,
+    "sporadicInterval": 5000,
     "backToBack": false
   },
   "requestBody": {

@@ -42,7 +42,7 @@ std::unique_ptr<folly::IOBuf> RequestScheduler::createRandomBody(size_t size) {
 RequestScheduler::Request RequestScheduler::nextRequest() {
   if (pattern_ == Pattern::SPORADIC && !firstRequest_) {
     VLOG(1) << fmt::format(
-        "Waiting for {} seconds before generating the next request",
+        "Waiting for {} milliseconds before generating the next request",
         sporadicInterval_.count());
     std::this_thread::sleep_for(sporadicInterval_);
   }

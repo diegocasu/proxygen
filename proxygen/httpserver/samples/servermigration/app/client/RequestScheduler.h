@@ -49,7 +49,7 @@ class RequestScheduler {
 
   Pattern pattern_;
   Body body_;
-  std::chrono::seconds sporadicInterval_;
+  std::chrono::milliseconds sporadicInterval_;
   bool firstRequest_{true};
   size_t fixedBodySize_{1024};
 
