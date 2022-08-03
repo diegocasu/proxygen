@@ -29,8 +29,8 @@
     "serverMigrationProtocol": "proactiveExplicit",
     "serverMigrationHost": "192.168.1.105",
     "serverMigrationPort": 6666,
-    "notifyImminentMigrationAfterRequest": 9,
-    "triggerMigrationAfterRequest": 10,
+    "notifyImminentMigrationAfterRequest": 699,
+    "triggerMigrationAfterRequest": 700,
 
     "shutdownAfterRequest": 0
   }
