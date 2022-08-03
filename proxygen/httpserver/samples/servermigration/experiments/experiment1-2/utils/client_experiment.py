@@ -42,7 +42,7 @@ class ClientExperimentManager:
             sys.exit(1)
 
     def _parse_base_config(self, config_name):
-        config_path = "./base_configs/" + config_name
+        config_path = "./baseconfigs/" + config_name
         with open(config_path, "r") as base_config_file:
             self._current_config = json.load(base_config_file)
 

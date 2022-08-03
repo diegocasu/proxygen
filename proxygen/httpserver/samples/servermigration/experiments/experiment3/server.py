@@ -58,7 +58,7 @@ def build_oci_bundle(container_name, runc_base, app_config_container_path):
 
 def set_configuration_file(runc_base, container_name,
                            app_config_container_path):
-    config_path = "./base_configs/experiment3_server.json"
+    config_path = "./baseconfigs/experiment3_server.json"
     with open(config_path, "r") as config_file:
         config = json.load(config_file)
 

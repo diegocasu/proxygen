@@ -46,7 +46,7 @@ def build_oci_bundle(container_name, runc_base, app_config_container_path):
 
 
 def parse_base_config():
-    config_path = "./base_configs/experiment0_server.json"
+    config_path = "./baseconfigs/experiment0_server.json"
     with open(config_path, "r") as base_config_file:
         return json.load(base_config_file)
 

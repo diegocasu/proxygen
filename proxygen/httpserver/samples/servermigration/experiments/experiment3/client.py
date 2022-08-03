@@ -44,7 +44,7 @@ def update_configuration_file(runc_base, container_base_name,
                               app_config_container_path,
                               last_client=False,
                               protocol=None):
-    config_path = "./base_configs/experiment3_client.json"
+    config_path = "./baseconfigs/experiment3_client.json"
     with open(config_path, "r") as config_file:
         config = json.load(config_file)
 
