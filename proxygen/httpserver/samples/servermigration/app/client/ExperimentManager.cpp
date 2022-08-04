@@ -1,4 +1,5 @@
 #include <folly/FileUtil.h>
+#include <folly/Random.h>
 #include <proxygen/httpserver/samples/servermigration/app/client/ExperimentManager.h>
 #include <proxygen/httpserver/samples/servermigration/app/common/Utils.h>
 #include <proxygen/httpserver/samples/servermigration/app/server/MigrationManagementInterface.h>
@@ -186,6 +187,8 @@ void ExperimentManager::maybeNotifyImminentServerMigration(
         notifyImminentServerMigration();
       }
       return;
+    case ExperimentId::FOURTH:
+      return;
   }
   LOG(ERROR) << "Unknown experiment ID. Stopping the manager";
   folly::assume_unreachable();
@@ -204,6 +207,7 @@ bool ExperimentManager::maybeTriggerServerMigration(
       }
       return false;
     case ExperimentId::THIRD:
+    case ExperimentId::FOURTH:
       return false;
   }
   LOG(ERROR) << "Unknown experiment ID. Stopping the manager";
@@ -227,8 +231,8 @@ bool ExperimentManager::maybeStopExperiment(
       return false;
     case ExperimentId::SECOND:
       if (firstResponseFromNewServerAddressReceived_) {
-        --responsesFromNewServerAddressBeforeShutdown_;
-        if (responsesFromNewServerAddressBeforeShutdown_ <= 0) {
+        --secondExpResponsesFromNewServerAddressBeforeShutdown_;
+        if (secondExpResponsesFromNewServerAddressBeforeShutdown_ <= 0) {
           stopExperiment(true);
           return true;
         }
@@ -244,6 +248,15 @@ bool ExperimentManager::maybeStopExperiment(
           stopExperiment(false);
         }
         return true;
+      }
+      return false;
+    case ExperimentId::FOURTH:
+      if (firstResponseFromNewServerAddressReceived_) {
+        --fourthExpResponsesFromNewServerAddressBeforeShutdown_;
+        if (fourthExpResponsesFromNewServerAddressBeforeShutdown_ <= 0) {
+          // Do not send the shutdown command.
+          return true;
+        }
       }
       return false;
   }
@@ -284,6 +297,10 @@ void ExperimentManager::stopExperimentDueToTimeout(
         stopExperiment(false);
       }
       return;
+    case ExperimentId::FOURTH:
+      connectionEndedDueToTimeout_ = true;
+      dumpServiceTimesToFile();
+      return;
   }
   LOG(ERROR) << "Unknown experiment ID. Stopping the manager";
   folly::assume_unreachable();
@@ -291,6 +308,7 @@ void ExperimentManager::stopExperimentDueToTimeout(
 
 void ExperimentManager::maybeSaveServiceTime(
     const int64_t &requestNumber,
+    const long &requestTimestamp,
     const long &serviceTime,
     const folly::SocketAddress &serverAddress) {
   switch (experimentId_) {
@@ -316,18 +334,33 @@ void ExperimentManager::maybeSaveServiceTime(
       serverAddresses_.push_back(serverAddress.describe());
 
       if (requestNumber == 1) {
-        secondExperimentOriginalServerAddress_ = serverAddress;
+        originalServerAddress_ = serverAddress;
         return;
       }
 
       if (requestNumber > triggerMigrationAfterRequest_ &&
           !firstResponseFromNewServerAddressReceived_ &&
-          secondExperimentOriginalServerAddress_ != serverAddress) {
+          originalServerAddress_ != serverAddress) {
         firstResponseFromNewServerAddressReceived_ = true;
       }
       return;
     }
     case ExperimentId::THIRD:
+      return;
+    case ExperimentId::FOURTH:
+      serviceTimes_.push_back(serviceTime);
+      serverAddresses_.push_back(serverAddress.describe());
+      requestTimestamps_.push_back(requestTimestamp);
+
+      if (requestNumber == 1) {
+        originalServerAddress_ = serverAddress;
+        return;
+      }
+
+      if (!firstResponseFromNewServerAddressReceived_ &&
+          originalServerAddress_ != serverAddress) {
+        firstResponseFromNewServerAddressReceived_ = true;
+      }
       return;
   }
   LOG(ERROR) << "Unknown experiment ID. Stopping the manager";
@@ -353,8 +386,26 @@ void ExperimentManager::dumpServiceTimesToFile() {
   dynamic["experiment"] = static_cast<int64_t>(experimentId_);
   dynamic["serviceTimes"] = serviceTimes;
   dynamic["serverAddresses"] = serverAddresses;
-  dynamic["firstRequestAfterMigrationTriggered"] =
-      firstRequestAfterMigrationTriggered_;
+
+  if (experimentId_ == ExperimentId::FIRST ||
+      experimentId_ == ExperimentId::SECOND) {
+    dynamic["firstRequestAfterMigrationTriggered"] =
+        firstRequestAfterMigrationTriggered_;
+  }
+
+  if (experimentId_ == ExperimentId::FOURTH) {
+    folly::dynamic requestTimestamps = folly::dynamic::array();
+    for (const auto &timestamp : requestTimestamps_) {
+      requestTimestamps.push_back(timestamp);
+    }
+    dynamic["requestTimestamps"] = requestTimestamps;
+    dynamic["connectionEndedDueToTimeout"] = connectionEndedDueToTimeout_;
+
+    // Randomize the name of the dump file
+    // (this is a scenario with multiple clients).
+    serviceTimesFile_ =
+        fmt::format("service_times_{}.json", folly::Random::secureRand64());
+  }
 
   auto dynamicJson = folly::toJson(dynamic);
   auto success = folly::writeFile(dynamicJson, serviceTimesFile_.data());

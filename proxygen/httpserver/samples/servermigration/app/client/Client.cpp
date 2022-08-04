@@ -282,6 +282,7 @@ void Client::scheduleRequests() {
     VLOG(1) << "Current number of openable streams=" << numberOfOpenableStreams;
     VLOG(1) << "Completed requests=" << numberOfCompletedRequests;
     std::chrono::time_point<std::chrono::steady_clock> startRequestTime;
+    long requestTimestamp;
 
     // This method blocks for the required amount of time
     // if the request pattern is sporadic.
@@ -296,6 +297,10 @@ void Client::scheduleRequests() {
         session_->closeWhenIdle();
         return;
       }
+      requestTimestamp =
+          std::chrono::duration_cast<std::chrono::microseconds>(
+              std::chrono::system_clock::now().time_since_epoch())
+              .count();
       startRequestTime = std::chrono::steady_clock::now();
       curl_->sendRequest(transaction,
                          request.httpMethod,
@@ -320,8 +325,9 @@ void Client::scheduleRequests() {
                     "Stopping the client";
       experimentManager_->stopExperimentDueToTimeout(
           quicClient_->getPeerAddress().getIPAddress());
-      // Do not save the measurements to notify that
-      // the execution ended with an error.
+      // Do not save the measurements to notify that the execution ended
+      // with an error. The only exception is the fourth experiment, which
+      // is handled directly inside stopExperimentDueToTimeout().
       break;
     }
     getAndPrintReceivedResponse();
@@ -331,8 +337,10 @@ void Client::scheduleRequests() {
 
     experimentManager_->maybeNotifyImminentServerMigration(
         numberOfCompletedRequests);
-    experimentManager_->maybeSaveServiceTime(
-        numberOfCompletedRequests, serviceTime, curl_->getResponseAddress());
+    experimentManager_->maybeSaveServiceTime(numberOfCompletedRequests,
+                                             requestTimestamp,
+                                             serviceTime,
+                                             curl_->getResponseAddress());
     triggerPTO = experimentManager_->maybeTriggerServerMigration(
         numberOfCompletedRequests);
     maybeUpdateServerManagementAddress();

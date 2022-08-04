@@ -31,6 +31,7 @@ class ExperimentManager
 
   bool maybeStopExperiment(const int64_t& numberOfCompletedRequests);
   void maybeSaveServiceTime(const int64_t& requestNumber,
+                            const long& requestTimestamp,
                             const long& serviceTime,
                             const folly::SocketAddress& serverAddress);
   void stopExperimentDueToTimeout(const folly::IPAddress& currentPeerAddress);
@@ -75,7 +76,11 @@ class ExperimentManager
     // the number of clients and the migration protocol.
     THIRD = 3,
 
-    MAX = THIRD,
+    // Experiment #4: record service times over time when multiple
+    // clients are connected, and the server migrates.
+    FOURTH = 4,
+
+    MAX = FOURTH,
   };
 
   void waitForResponseOrRetransmit(const folly::SocketAddress& destination,
@@ -113,17 +118,27 @@ class ExperimentManager
   folly::SocketAddress containerMigrationScriptAddress_;
   std::string migrateCommand_{"migrate"};
 
-  // Significant service times measured during the experiment, in microseconds.
+  // Significant service times measured during the experiment,
+  // in microseconds, and related quantities.
+  std::vector<long> requestTimestamps_;
   std::vector<long> serviceTimes_;
   std::vector<std::string> serverAddresses_;
   int64_t firstRequestAfterMigrationTriggered_{-1};
   std::string serviceTimesFile_{"service_times.json"};
 
-  // Variables used during the second experiment to detect when
-  // the first response from the new server address is received.
-  folly::Optional<folly::SocketAddress> secondExperimentOriginalServerAddress_;
+  // Flag used to record if the connection ended due to a timeout.
+  // It is used only in the fourth experiment.
+  bool connectionEndedDueToTimeout_{false};
+
+  // Variables used during the second and fourth experiment to detect
+  // when the first response from the new server address is received.
+  folly::Optional<folly::SocketAddress> originalServerAddress_;
   bool firstResponseFromNewServerAddressReceived_{false};
-  int responsesFromNewServerAddressBeforeShutdown_{10};
+
+  // Variables used during the second and fourth experiment
+  // to determine when the experiment should end.
+  int secondExpResponsesFromNewServerAddressBeforeShutdown_{10};
+  int fourthExpResponsesFromNewServerAddressBeforeShutdown_{30};
 };
 
 } // namespace quic::samples::servermigration
