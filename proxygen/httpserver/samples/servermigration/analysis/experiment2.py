@@ -114,7 +114,7 @@ def preprocess_dataset(dataset):
         lambda row: get_migration_affected_service_time(row),
         axis=1, result_type="expand")
     preprocessed_dataset = pd.concat(
-        [preprocessed_dataset, new_columns], axis='columns')
+        [preprocessed_dataset, new_columns], axis="columns")
 
     preprocessed_dataset["migrationAffectedServiceTime [ms]"] = \
         preprocessed_dataset["migrationAffectedServiceTime [us]"] / 1000

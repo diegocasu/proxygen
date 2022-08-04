@@ -104,9 +104,6 @@ def main():
     dataset_18 = parse_dataset(dataset_path_18)
     preprocessed_dataset_18 = preprocess_dataset(dataset_18)
 
-    # print(dataset.to_string())
-    # print(preprocessed_dataset.to_string())
-
     os.makedirs("./plots", exist_ok=True)
     plot_migration_notification_times(preprocessed_dataset_18, "18 ms RTT")
     plot_migration_notification_times(preprocessed_dataset_122, "122 ms RTT")
