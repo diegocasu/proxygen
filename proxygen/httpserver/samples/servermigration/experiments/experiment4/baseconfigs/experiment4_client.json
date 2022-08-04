@@ -1,0 +1,38 @@
+{
+  "serverHost": "192.168.1.104",
+  "serverPort": 6666,
+  "serverMigration": {
+    "enable": true,
+    "explicit": true,
+    "poolOfAddresses": true,
+    "symmetric": true,
+    "synchronizedSymmetric": true
+  },
+  "keyLogging": {
+    "enable": false,
+    "file": "./keys.txt"
+  },
+  "requestPattern": {
+    "sporadic": false,
+    "sporadicInterval": 0,
+    "backToBack": false
+  },
+  "requestBody": {
+    "fixed": false,
+    "fromDistribution": true
+  },
+  "seed": 1,
+  "experiment": {
+    "id": 4,
+    "serverMigrationProtocol": "proactiveExplicit",
+
+    "serverManagementPort": 7777,
+    "containerMigrationScriptHost": "0.0.0.0",
+    "containerMigrationScriptPort": 0,
+    "serverMigrationHost": "8.8.8.8",
+    "serverMigrationPort": 8888,
+    "notifyImminentMigrationAfterRequest": 0,
+    "triggerMigrationAfterRequest": 0,
+    "shutdownAfterRequest": 0
+  }
+}
