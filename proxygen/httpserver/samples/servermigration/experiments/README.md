@@ -1,21 +1,19 @@
 # Commands to reproduce the experiments
 
-## Topology:
+## Topology
 
 Three machines, called _client_, _server_source_ and _server_destination_, 
 connected by a switch. Suppose that the IP addresses are ```192.168.1.57```,
-```192.168.1.104``` and ```192.168.1.105```, respectively.  
-The RTT, bandwidth and packet loss of the paths 
-connecting the client to the servers are set up using either the script 
-```tc_setup_no_loss.sh``` or ```tc_setup_loss.sh```, so that:
-- _client_ can reach _server_source_ with an RTT of 122 ms;
-- _client_ can reach _server_destination_ with an RTT of 18 ms.
-
-The ```.sh``` scripts must be executed on _client_ only.
+```192.168.1.104``` and ```192.168.1.105```, respectively. The RTT, bandwidth 
+and packet loss of the paths connecting the client to the servers are set up 
+using the scripts in ```tc```.
 
 ## Experiment 0 (QUIC baseline)
 
-Inside ```servermigration/experiments/quicbaseline```, run:
+Set up the traffic control running 
+```tc/tc_setup_without_loss_experiments_0-3.sh``` or 
+```tc/tc_setup_with_loss_experiments_0-2.sh``` on _client_.  
+Inside ```quicbaseline```, run:
 1. _server_destination_
    ```bash
    sudo python3 server.py --repetitions=100 --rebuild_image
@@ -28,7 +26,10 @@ Inside ```servermigration/experiments/quicbaseline```, run:
 
 ## Experiment 1
 
-Inside ```servermigration/experiments/experiment1-2```, run:
+Set up the traffic control running
+```tc/tc_setup_without_loss_experiments_0-3.sh``` or
+```tc/tc_setup_with_loss_experiments_0-2.sh``` on _client_.  
+Inside ```experiment1-2```, run:
 1. _server_source_
    ```bash
    sudo python3 server_source.py --experiment=1 --destination_ip=192.168.1.105 --disable_rsync_compression --repetitions=100 --rebuild_image
@@ -46,7 +47,10 @@ Inside ```servermigration/experiments/experiment1-2```, run:
 
 ## Experiment 2
 
-Inside ```servermigration/experiments/experiment1-2```, run:
+Set up the traffic control running
+```tc/tc_setup_without_loss_experiments_0-3.sh``` or
+```tc/tc_setup_with_loss_experiments_0-2.sh``` on _client_.  
+Inside ```experiment1-2```, run:
 1. _server_source_
    ```bash
    sudo python3 server_source.py --experiment=2 --destination_ip=192.168.1.105 --disable_rsync_compression --repetitions=10 --rebuild_image
@@ -67,7 +71,9 @@ To obtain the results with compression enabled, just change the flag
 
 ## Experiment 3
 
-Inside ```servermigration/experiments/experiment3```, run:
+Set up the traffic control running 
+```tc/tc_setup_without_loss_experiments_0-3.sh``` on _client_.  
+Inside ```experiment3```, run:
 1. _server_source_ or _server_destination_
    ```bash
    sudo python3 server.py --repetitions=10 --rebuild_image
