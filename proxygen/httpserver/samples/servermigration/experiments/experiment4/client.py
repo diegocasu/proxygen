@@ -142,10 +142,21 @@ def stop_all_containers_and_console_sockets(container_names,
 
 def notify_imminent_server_migration(server_ip, destination_address,
                                      management_port, protocol):
-    actual_protocol = "Explicit" if "Explicit" in protocol else protocol
-    command = json.dumps({"action": "onImminentServerMigration",
-                          "protocol": actual_protocol,
-                          "address": destination_address})
+    if "Explicit" in protocol:
+        command = json.dumps({"action": "onImminentServerMigration",
+                              "protocol": "Explicit",
+                              "address": destination_address})
+    elif protocol == "poolOfAddresses":
+        command = json.dumps({"action": "onImminentServerMigration",
+                              "protocol": "Pool of Addresses"})
+    elif protocol == "symmetric":
+        command = json.dumps({"action": "onImminentServerMigration",
+                              "protocol": "Symmetric"})
+    elif protocol == "synchronizedSymmetric":
+        command = json.dumps({"action": "onImminentServerMigration",
+                              "protocol": "Synchronized Symmetric"})
+    else:
+        raise RuntimeError("Invalid QUIC migration protocol")
 
     logger.info("Notifying imminent server migration sending command {} "
                 "to {}:{}".format(command, server_ip, management_port))
