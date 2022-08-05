@@ -289,9 +289,9 @@ def save_service_times(results, service_times_list, run, n_clients,
             .append(service_times.get("serverAddresses", None))
         results["connectionEndedDueToTimeout"] \
             .append(service_times.get("connectionEndedDueToTimeout", None))
-        results["migrationNotificationTimestamp [ms]"] \
+        results["migrationNotificationTimestamp [s]"] \
             .append(migration_notification_timestamp)
-        results["migrationTriggerTimestamp [ms]"] \
+        results["migrationTriggerTimestamp [s]"] \
             .append(migration_trigger_timestamp)
 
 
@@ -321,8 +321,8 @@ def main():
                "intervalBetweenRequests": [],
                "requestTimestamps [us]": [], "serviceTimes [us]": [],
                "serverAddresses": [], "connectionEndedDueToTimeout": [],
-               "migrationNotificationTimestamp [ms]": [],
-               "migrationTriggerTimestamp [ms]": []}
+               "migrationNotificationTimestamp [s]": [],
+               "migrationTriggerTimestamp [s]": []}
 
     # Times in seconds used to drive the experiment events.
     sleep_before_imminent_migration = 90
