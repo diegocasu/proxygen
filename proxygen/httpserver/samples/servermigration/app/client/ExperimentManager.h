@@ -139,6 +139,9 @@ class ExperimentManager
   // to determine when the experiment should end.
   int secondExpResponsesFromNewServerAddressBeforeShutdown_{10};
   int fourthExpResponsesFromNewServerAddressBeforeShutdown_{30};
+
+  // Seed used in the third experiment to make the service times file unique.
+  int64_t seed_;
 };
 
 } // namespace quic::samples::servermigration

@@ -1,5 +1,4 @@
 #include <folly/FileUtil.h>
-#include <folly/Random.h>
 #include <proxygen/httpserver/samples/servermigration/app/client/ExperimentManager.h>
 #include <proxygen/httpserver/samples/servermigration/app/common/Utils.h>
 #include <proxygen/httpserver/samples/servermigration/app/server/MigrationManagementInterface.h>
@@ -23,7 +22,8 @@ ExperimentManager::ExperimentManager(const folly::dynamic &config,
       containerMigrationScriptAddress_(
           config["experiment"]["containerMigrationScriptHost"].asString(),
           config["experiment"]["containerMigrationScriptPort"].asInt(),
-          true) {
+          true),
+      seed_(config["seed"].asInt()) {
   if (config["experiment"]["id"].asInt() >
       static_cast<int64_t>(ExperimentId::MAX)) {
     throw std::invalid_argument("Bad experiment ID");
@@ -400,11 +400,11 @@ void ExperimentManager::dumpServiceTimesToFile() {
     }
     dynamic["requestTimestamps"] = requestTimestamps;
     dynamic["connectionEndedDueToTimeout"] = connectionEndedDueToTimeout_;
+    dynamic["seed"] = seed_;
 
-    // Randomize the name of the dump file
+    // Make the name of the dump file unique
     // (this is a scenario with multiple clients).
-    serviceTimesFile_ =
-        fmt::format("service_times_{}.json", folly::Random::secureRand64());
+    serviceTimesFile_ = fmt::format("service_times_{}.json", seed_);
   }
 
   auto dynamicJson = folly::toJson(dynamic);

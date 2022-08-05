@@ -172,7 +172,7 @@ def save_migration_measurements(results, run, n_clients, config,
     for i in range(0, n_clients):
         results["experiment"].append(4)
         results["run"].append(run)
-        results["seed"].append(seed)
+        results["seedServer"].append(seed)
         results["migrationTechnique"] \
             .append(migration_technique.to_camel_case_string())
         results["memoryFootprintInflation [MB]"].append(inflation)
@@ -226,7 +226,7 @@ def main():
     if args.rebuild_image or not os.path.isdir(container_name):
         build_oci_bundle(container_name, runc_base, app_config_container_path)
 
-    results = {"experiment": [], "run": [], "seed": [],
+    results = {"experiment": [], "run": [], "seedServer": [],
                "migrationTechnique": [], "memoryFootprintInflation [MB]": [],
                "compressionEnabled": [],
                "preDumpTime [s]": [], "preDumpTxTime [s]": [],

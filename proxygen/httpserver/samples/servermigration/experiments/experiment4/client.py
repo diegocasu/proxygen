@@ -61,14 +61,13 @@ def generate_container_and_console_socket_names(runc_base, container_base_name,
     return container_names, console_socket_files
 
 
-def generate_all_configs():
+def generate_all_configs(n_clients):
     combination_list = generate_experiment_combinations()
     config_path = "./baseconfigs/experiment4_client.json"
     config_list = []
-    seed = 0
+    seed = 1
 
     for combination in combination_list:
-        seed += 1
         with open(config_path, "r") as config_file:
             config = json.load(config_file)
             config["seed"] = seed
@@ -85,6 +84,11 @@ def generate_all_configs():
 
             config_list.append(config)
 
+        # Each client will have a different seed starting from the same base
+        # configuration, so increment the seed by the number of clients for
+        # each new base configuration.
+        seed += n_clients
+
     return config_list
 
 
@@ -97,15 +101,25 @@ def update_configuration_file(runc_base, container_base_name,
 
 
 def start_all_containers(runc_base, container_base_name, container_names,
-                         console_socket_files):
+                         console_socket_files, app_config_container_path,
+                         config):
     console_socket_processes = []
+    base_seed = config["seed"]
 
     for i, name in enumerate(container_names):
+        config["seed"] = base_seed + i
+        update_configuration_file(runc_base, container_base_name,
+                                  app_config_container_path, config)
+
         console_socket_processes.append(
             start_console_socket(console_socket_files[i],
                                  suppress_output=False))
         start_container(runc_base, container_base_name, name,
                         console_socket_files[i], detached=True)
+
+        # Wait a bit so that the container can be launched and
+        # can parse the correct configuration.
+        time.sleep(0.3)
 
     return console_socket_processes
 
@@ -259,7 +273,7 @@ def save_service_times(results, service_times_list, run, seed, n_clients,
     for service_times in service_times_list:
         results["experiment"].append(4)
         results["run"].append(run)
-        results["seed"].append(seed)
+        results["seedClient"].append(service_times.get("seed", None))
         results["numberOfClients"].append(n_clients)
         results["protocol"].append(quic_protocol)
         results["requestTimestamps [us]"] \
@@ -297,10 +311,10 @@ def main():
         build_oci_bundle(container_base_name, runc_base,
                          app_config_container_path)
 
-    results = {"experiment": [], "run": [], "seed": [], "numberOfClients": [],
-               "protocol": [], "requestTimestamps [us]": [],
-               "serviceTimes [us]": [], "serverAddresses": [],
-               "connectionEndedDueToTimeout": [],
+    results = {"experiment": [], "run": [], "seedClient": [],
+               "numberOfClients": [], "protocol": [],
+               "requestTimestamps [us]": [], "serviceTimes [us]": [],
+               "serverAddresses": [], "connectionEndedDueToTimeout": [],
                "migrationNotificationTimestamp [ms]": [],
                "migrationTriggerTimestamp [ms]": []}
 
@@ -310,7 +324,7 @@ def main():
 
     run = 1
     n_clients = 30
-    config_list = generate_all_configs()
+    config_list = generate_all_configs(n_clients)
     container_names, console_socket_files = \
         generate_container_and_console_socket_names(runc_base,
                                                     container_base_name,
@@ -319,13 +333,11 @@ def main():
         logger.info("New experiment run with configuration\n{}"
                     .format(json.dumps(config, indent=4)))
 
-        update_configuration_file(runc_base, container_base_name,
-                                  app_config_container_path, config)
-
         # Start all the client containers in detached mode.
         console_socket_processes = \
             start_all_containers(runc_base, container_base_name,
-                                 container_names, console_socket_files)
+                                 container_names, console_socket_files,
+                                 app_config_container_path, config)
 
         # Handler used to stop the console sockets and
         # the containers if a failure occurs.
