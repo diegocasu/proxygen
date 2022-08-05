@@ -83,3 +83,23 @@ Inside ```experiment3```, run:
    ```bash
    sudo python3 client.py --repetitions=10 --rebuild_image
    ```
+   
+## Experiment 4
+
+Set up the traffic control running ```tc/tc_setup_without_loss_experiment_4.sh```
+or ```tc/tc_setup_with_loss_experiment_4.sh``` on _client_.  
+Inside ```experiment4```, run:
+1. _server_source_
+   ```bash
+   sudo python3 server_source.py --destination_ip=192.168.1.105 --disable_rsync_compression --rebuild_image
+   ```
+
+2. _server_destination_
+   ```bash
+   sudo python3 server_destination.py --management_ip=192.168.1.105 --management_port=7777 --rebuild_image
+   ```
+
+4. _client_
+   ```bash
+   sudo python3 client.py --container_migration_script_ip=192.168.1.104 --destination_address=192.168.1.105:6666 --server_ip=192.168.1.104 --management_port=7777 --rebuild_image
+   ```
