@@ -75,12 +75,12 @@ def generate_all_configs(n_clients):
             quic_protocol = combination[1]
             config["experiment"]["serverMigrationProtocol"] = quic_protocol
 
-            throughput = combination[3]
-            if throughput == -1:
+            request_interval = combination[3]
+            if request_interval == 0:
                 config["requestPattern"]["backToBack"] = True
             else:
                 config["requestPattern"]["sporadic"] = True
-                config["requestPattern"]["sporadicInterval"] = throughput
+                config["requestPattern"]["sporadicInterval"] = request_interval
 
             config_list.append(config)
 
@@ -267,15 +267,20 @@ def parse_and_delete_service_times_dump(runc_base, container_name,
     return service_times_list
 
 
-def save_service_times(results, service_times_list, run, seed, n_clients,
+def save_service_times(results, service_times_list, run, n_clients,
                        migration_notification_timestamp,
-                       migration_trigger_timestamp, quic_protocol):
+                       migration_trigger_timestamp, quic_protocol,
+                       request_pattern):
+    request_interval = 0 if request_pattern["backToBack"] \
+        else request_pattern["sporadicInterval"]
+
     for service_times in service_times_list:
         results["experiment"].append(4)
         results["run"].append(run)
         results["seedClient"].append(service_times.get("seed", None))
         results["numberOfClients"].append(n_clients)
         results["protocol"].append(quic_protocol)
+        results["intervalBetweenRequests"].append(request_interval)
         results["requestTimestamps [us]"] \
             .append(service_times.get("requestTimestamps", None))
         results["serviceTimes [us]"] \
@@ -313,6 +318,7 @@ def main():
 
     results = {"experiment": [], "run": [], "seedClient": [],
                "numberOfClients": [], "protocol": [],
+               "intervalBetweenRequests": [],
                "requestTimestamps [us]": [], "serviceTimes [us]": [],
                "serverAddresses": [], "connectionEndedDueToTimeout": [],
                "migrationNotificationTimestamp [ms]": [],
@@ -374,10 +380,11 @@ def main():
             logger.error("Found {} service times files instead of {}"
                          .format(len(service_times_list), n_clients))
 
-        save_service_times(results, service_times_list, run, config["seed"],
-                           n_clients, migration_notification_timestamp,
+        save_service_times(results, service_times_list, run, n_clients,
+                           migration_notification_timestamp,
                            migration_trigger_timestamp,
-                           config["experiment"]["serverMigrationProtocol"])
+                           config["experiment"]["serverMigrationProtocol"],
+                           config["requestPattern"])
 
         # Force console sockets and containers
         # to stop at the end of the run.

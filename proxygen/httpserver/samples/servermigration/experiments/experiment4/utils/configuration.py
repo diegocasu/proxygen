@@ -8,8 +8,8 @@ def generate_experiment_combinations():
     quic_protocols = ["reactiveExplicit", "poolOfAddresses", "symmetric"]
     migration_techniques = list(MigrationTechnique)
 
-    # Throughputs in milliseconds. -1 means maximum possible (back to back).
-    throughputs = [-1, 260, 1000]
+    # Request intervals in milliseconds, where 0 means back-to-back requests.
+    request_intervals = [0, 260, 1000]
 
     return list(itertools.product(container_dimensions, quic_protocols,
-                                  migration_techniques, throughputs))
+                                  migration_techniques, request_intervals))
