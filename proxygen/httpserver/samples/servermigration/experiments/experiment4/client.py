@@ -280,7 +280,7 @@ def save_service_times(results, service_times_list, run, n_clients,
         results["seedClient"].append(service_times.get("seed", None))
         results["numberOfClients"].append(n_clients)
         results["protocol"].append(quic_protocol)
-        results["intervalBetweenRequests"].append(request_interval)
+        results["intervalBetweenRequests [ms]"].append(request_interval)
         results["requestTimestamps [us]"] \
             .append(service_times.get("requestTimestamps", None))
         results["serviceTimes [us]"] \
@@ -318,7 +318,7 @@ def main():
 
     results = {"experiment": [], "run": [], "seedClient": [],
                "numberOfClients": [], "protocol": [],
-               "intervalBetweenRequests": [],
+               "intervalBetweenRequests [ms]": [],
                "requestTimestamps [us]": [], "serviceTimes [us]": [],
                "serverAddresses": [], "connectionEndedDueToTimeout": [],
                "migrationNotificationTimestamp [s]": [],
