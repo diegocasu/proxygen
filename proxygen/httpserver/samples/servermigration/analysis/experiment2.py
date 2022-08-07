@@ -681,13 +681,13 @@ def main():
     plot_service_times_over_time(preprocessed_dataset_no_loss)
 
     # plot_service_times_group_by_quic_protocol(
-    #     preprocessed_dataset_loss, "Packet loss 3%")
+    #     preprocessed_dataset_loss, "Packet loss 3 %")
     # plot_service_times_group_by_migration_technique(
-    #     preprocessed_dataset_loss, "Packet loss 3%")
+    #     preprocessed_dataset_loss, "Packet loss 3 %")
     plot_service_times_scatterplot(
-        preprocessed_dataset_loss, "Packet loss 3%")
+        preprocessed_dataset_loss, "Packet loss 3 %")
     plot_service_times_group_by_quic_protocol_all_together(
-        preprocessed_dataset_loss, "Packet loss 3%")
+        preprocessed_dataset_loss, "Packet loss 3 %")
 
     plot_container_migration_time(preprocessed_dataset_no_loss,
                                   as_percentage=False,

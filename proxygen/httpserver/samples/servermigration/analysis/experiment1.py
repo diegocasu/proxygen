@@ -139,7 +139,7 @@ def plot_service_times_together(dataset_no_loss, dataset_loss, figsize):
     ax1.tick_params(axis="both", which="minor", labelsize=14)
     set_labels_over_bars(ax1, [80, 80, 100, 120, 180, 80, 80])
 
-    ax2.set_title("Packet loss 3%", fontsize=20)
+    ax2.set_title("Packet loss 3 %", fontsize=20)
     ax2.set_ylabel("Service time [ms]", fontsize=20, labelpad=30)
     ax2.set_xlabel("QUIC migration protocol", fontsize=20, labelpad=30)
     ax2.tick_params(axis="both", which="major", labelsize=14)
@@ -180,7 +180,7 @@ def main():
                        title="No packet loss")
     plot_service_times(preprocessed_dataset_loss,
                        label_height_increases=[40, 40, 110, 220, 1020, 40, 40],
-                       title="Packet loss 3%")
+                       title="Packet loss 3 %")
     plot_service_times_together(preprocessed_dataset_no_loss,
                                 preprocessed_dataset_loss,
                                 figsize=(19.20, 10.80))
