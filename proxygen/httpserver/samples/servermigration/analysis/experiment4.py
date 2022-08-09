@@ -169,14 +169,16 @@ def adjust_y_margin(ax, loss, protocol, interval, technique):
         return
 
     if protocol == "Pool of Addresses (3)":
-        if technique == "Cold" and interval == 0:
+        if technique == "Cold":
             ax.set_ymargin(0.002)
-        elif technique == "Pre-copy" and interval == 0:
+        elif technique == "Pre-copy":
             ax.set_ymargin(0.001)
         elif technique == "Post-copy" and interval == 0:
             ax.set_ymargin(0.002)
         elif technique == "Post-copy" and interval == 260:
             ax.set_ymargin(0.003)
+        elif technique == "Post-copy" and interval == 1000:
+            ax.set_ymargin(0.001)
         elif technique == "Hybrid" and (interval == 0 or interval == 260):
             ax.set_ymargin(0.001)
         elif technique == "Hybrid" and interval == 1000:
@@ -186,10 +188,12 @@ def adjust_y_margin(ax, loss, protocol, interval, technique):
         return
 
     if protocol == "Symmetric":
-        if technique == "Cold" and interval == 260:
+        if technique == "Cold" and (interval == 0 or interval == 260):
             ax.set_ymargin(0.007)
-        elif technique == "Pre-copy" and (interval == 0 or interval == 1000):
+        elif technique == "Pre-copy" and interval == 1000:
             ax.set_ymargin(0.007)
+        elif technique == "Pre-copy" and (interval == 0 or interval == 260):
+            ax.set_ymargin(0.002)
         elif technique == "Post-copy":
             ax.set_ymargin(0.007)
         elif technique == "Hybrid" and (interval == 0 or interval == 260):
@@ -213,7 +217,7 @@ def plot_service_times_over_time(dataset, title, loss):
                                   "memoryFootprintInflation [MB]"] == 0) &
                              (dataset[
                                   "intervalBetweenRequests [ms]"] == interval) &
-                             (dataset["shiftedRequestTimestamps [s]"] < 140) &
+                             (dataset["shiftedRequestTimestamps [s]"] <= 140) &
                              (dataset["shiftedRequestTimestamps [s]"] >= 30) &
                              (dataset["connectionEndedDueToTimeout"] == False)]
                 ax = axes[i, j]
@@ -242,8 +246,8 @@ def plot_service_times_over_time(dataset, title, loss):
                 adjust_y_margin(ax, loss, protocol, interval, technique)
 
                 ax.set_ylim(top=6)
-                ax.set_yticks(np.arange(0, 6, 1))
-                ax.set_xticks(np.arange(30, 140, 10))
+                ax.set_yticks(np.arange(0, 7, 1))
+                ax.set_xticks(np.arange(30, 150, 10))
 
                 ax.tick_params(axis="both", which="major", labelsize=14)
                 ax.tick_params(axis="both", which="minor", labelsize=14)
