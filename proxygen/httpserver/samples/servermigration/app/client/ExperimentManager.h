@@ -80,7 +80,11 @@ class ExperimentManager
     // clients are connected, and the server migrates.
     FOURTH = 4,
 
-    MAX = FOURTH,
+    // Experiment #5: record service times over time when server migration
+    // is triggered by client handovers.
+    FIFTH = 5,
+
+    MAX = FIFTH,
   };
 
   void waitForResponseOrRetransmit(const folly::SocketAddress& destination,

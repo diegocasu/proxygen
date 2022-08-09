@@ -326,8 +326,9 @@ void Client::scheduleRequests() {
       experimentManager_->stopExperimentDueToTimeout(
           quicClient_->getPeerAddress().getIPAddress());
       // Do not save the measurements to notify that the execution ended
-      // with an error. The only exception is the fourth experiment, which
-      // is handled directly inside stopExperimentDueToTimeout().
+      // with an error. The only exceptions are the fourth and fifth
+      // experiments, which are handled directly inside
+      // stopExperimentDueToTimeout().
       break;
     }
     getAndPrintReceivedResponse();

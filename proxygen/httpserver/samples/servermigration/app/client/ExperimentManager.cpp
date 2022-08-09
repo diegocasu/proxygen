@@ -188,6 +188,7 @@ void ExperimentManager::maybeNotifyImminentServerMigration(
       }
       return;
     case ExperimentId::FOURTH:
+    case ExperimentId::FIFTH:
       return;
   }
   LOG(ERROR) << "Unknown experiment ID. Stopping the manager";
@@ -208,6 +209,7 @@ bool ExperimentManager::maybeTriggerServerMigration(
       return false;
     case ExperimentId::THIRD:
     case ExperimentId::FOURTH:
+    case ExperimentId::FIFTH:
       return false;
   }
   LOG(ERROR) << "Unknown experiment ID. Stopping the manager";
@@ -259,6 +261,9 @@ bool ExperimentManager::maybeStopExperiment(
         }
       }
       return false;
+    case ExperimentId::FIFTH:
+      // Stop the experiment only after an idle timeout.
+      return false;
   }
   LOG(ERROR) << "Unknown experiment ID. Stopping the manager";
   folly::assume_unreachable();
@@ -299,6 +304,9 @@ void ExperimentManager::stopExperimentDueToTimeout(
       return;
     case ExperimentId::FOURTH:
       connectionEndedDueToTimeout_ = true;
+      dumpServiceTimesToFile();
+      return;
+    case ExperimentId::FIFTH:
       dumpServiceTimesToFile();
       return;
   }
@@ -362,6 +370,11 @@ void ExperimentManager::maybeSaveServiceTime(
         firstResponseFromNewServerAddressReceived_ = true;
       }
       return;
+    case ExperimentId::FIFTH:
+      serviceTimes_.push_back(serviceTime);
+      serverAddresses_.push_back(serverAddress.describe());
+      requestTimestamps_.push_back(requestTimestamp);
+      return;
   }
   LOG(ERROR) << "Unknown experiment ID. Stopping the manager";
   folly::assume_unreachable();
@@ -393,12 +406,16 @@ void ExperimentManager::dumpServiceTimesToFile() {
         firstRequestAfterMigrationTriggered_;
   }
 
-  if (experimentId_ == ExperimentId::FOURTH) {
+  if (experimentId_ == ExperimentId::FOURTH ||
+      experimentId_ == ExperimentId::FIFTH) {
     folly::dynamic requestTimestamps = folly::dynamic::array();
     for (const auto &timestamp : requestTimestamps_) {
       requestTimestamps.push_back(timestamp);
     }
     dynamic["requestTimestamps"] = requestTimestamps;
+  }
+
+  if (experimentId_ == ExperimentId::FOURTH) {
     dynamic["connectionEndedDueToTimeout"] = connectionEndedDueToTimeout_;
     dynamic["seed"] = seed_;
 
