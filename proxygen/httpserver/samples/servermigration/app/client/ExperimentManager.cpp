@@ -172,13 +172,13 @@ void ExperimentManager::maybeNotifyImminentServerMigration(
   switch (experimentId_) {
     case ExperimentId::QUIC_BASELINE:
       return;
-    case ExperimentId::FIRST:
-    case ExperimentId::SECOND:
+    case ExperimentId::ONE:
+    case ExperimentId::TWO:
       if (numberOfCompletedRequests == notifyImminentMigrationAfterRequest_) {
         notifyImminentServerMigration();
       }
       return;
-    case ExperimentId::THIRD:
+    case ExperimentId::THREE:
       // The third experiment comprises multiple clients, thus notify migration
       // only if this is the last client. The latter is the only one with a
       // value of notifyImminentMigrationAfterRequest_ greater than zero.
@@ -187,8 +187,8 @@ void ExperimentManager::maybeNotifyImminentServerMigration(
         notifyImminentServerMigration();
       }
       return;
-    case ExperimentId::FOURTH:
-    case ExperimentId::FIFTH:
+    case ExperimentId::FOUR:
+    case ExperimentId::FIVE:
       return;
   }
   LOG(ERROR) << "Unknown experiment ID. Stopping the manager";
@@ -200,16 +200,16 @@ bool ExperimentManager::maybeTriggerServerMigration(
   switch (experimentId_) {
     case ExperimentId::QUIC_BASELINE:
       return false;
-    case ExperimentId::FIRST:
-    case ExperimentId::SECOND:
+    case ExperimentId::ONE:
+    case ExperimentId::TWO:
       if (numberOfCompletedRequests == triggerMigrationAfterRequest_) {
         triggerServerMigration(true);
         return proactiveExplicit_;
       }
       return false;
-    case ExperimentId::THIRD:
-    case ExperimentId::FOURTH:
-    case ExperimentId::FIFTH:
+    case ExperimentId::THREE:
+    case ExperimentId::FOUR:
+    case ExperimentId::FIVE:
       return false;
   }
   LOG(ERROR) << "Unknown experiment ID. Stopping the manager";
@@ -225,13 +225,13 @@ bool ExperimentManager::maybeStopExperiment(
         return true;
       }
       return false;
-    case ExperimentId::FIRST:
+    case ExperimentId::ONE:
       if (numberOfCompletedRequests == shutdownAfterRequest_) {
         stopExperiment(true);
         return true;
       }
       return false;
-    case ExperimentId::SECOND:
+    case ExperimentId::TWO:
       if (firstResponseFromNewServerAddressReceived_) {
         --secondExpResponsesFromNewServerAddressBeforeShutdown_;
         if (secondExpResponsesFromNewServerAddressBeforeShutdown_ <= 0) {
@@ -240,7 +240,7 @@ bool ExperimentManager::maybeStopExperiment(
         }
       }
       return false;
-    case ExperimentId::THIRD:
+    case ExperimentId::THREE:
       if (numberOfCompletedRequests == shutdownAfterRequest_) {
         // The third experiment comprises multiple clients, thus send the
         // shutdown only if this is the last client. The latter is the only
@@ -252,7 +252,7 @@ bool ExperimentManager::maybeStopExperiment(
         return true;
       }
       return false;
-    case ExperimentId::FOURTH:
+    case ExperimentId::FOUR:
       if (firstResponseFromNewServerAddressReceived_) {
         --fourthExpResponsesFromNewServerAddressBeforeShutdown_;
         if (fourthExpResponsesFromNewServerAddressBeforeShutdown_ <= 0) {
@@ -261,7 +261,7 @@ bool ExperimentManager::maybeStopExperiment(
         }
       }
       return false;
-    case ExperimentId::FIFTH:
+    case ExperimentId::FIVE:
       // Stop the experiment only after an idle timeout.
       return false;
   }
@@ -275,8 +275,8 @@ void ExperimentManager::stopExperimentDueToTimeout(
     case ExperimentId::QUIC_BASELINE:
       stopExperiment(false);
       return;
-    case ExperimentId::FIRST:
-    case ExperimentId::SECOND: {
+    case ExperimentId::ONE:
+    case ExperimentId::TWO: {
       auto currentManagementAddress = folly::SocketAddress(
           currentPeerAddress, serverManagementAddress_.getPort());
       if (currentManagementAddress != serverManagementAddress_) {
@@ -293,7 +293,7 @@ void ExperimentManager::stopExperimentDueToTimeout(
       stopExperiment(true);
       return;
     }
-    case ExperimentId::THIRD:
+    case ExperimentId::THREE:
       // The third experiment comprises multiple clients, thus send the
       // shutdown only if this is the last client. The latter is the only
       // one with a value of notifyImminentMigrationAfterRequest_ greater
@@ -302,11 +302,11 @@ void ExperimentManager::stopExperimentDueToTimeout(
         stopExperiment(false);
       }
       return;
-    case ExperimentId::FOURTH:
+    case ExperimentId::FOUR:
       connectionEndedDueToTimeout_ = true;
       dumpServiceTimesToFile();
       return;
-    case ExperimentId::FIFTH:
+    case ExperimentId::FIVE:
       dumpServiceTimesToFile();
       return;
   }
@@ -326,14 +326,14 @@ void ExperimentManager::maybeSaveServiceTime(
         serverAddresses_.push_back(serverAddress.describe());
       }
       return;
-    case ExperimentId::FIRST:
+    case ExperimentId::ONE:
       if (requestNumber == triggerMigrationAfterRequest_ + 1) {
         serviceTimes_.push_back(serviceTime);
         serverAddresses_.push_back(serverAddress.describe());
         firstRequestAfterMigrationTriggered_ = requestNumber;
       }
       return;
-    case ExperimentId::SECOND: {
+    case ExperimentId::TWO: {
       CHECK_GT(triggerMigrationAfterRequest_, 1);
       if (requestNumber == triggerMigrationAfterRequest_ + 1) {
         firstRequestAfterMigrationTriggered_ = requestNumber;
@@ -353,9 +353,9 @@ void ExperimentManager::maybeSaveServiceTime(
       }
       return;
     }
-    case ExperimentId::THIRD:
+    case ExperimentId::THREE:
       return;
-    case ExperimentId::FOURTH:
+    case ExperimentId::FOUR:
       serviceTimes_.push_back(serviceTime);
       serverAddresses_.push_back(serverAddress.describe());
       requestTimestamps_.push_back(requestTimestamp);
@@ -370,7 +370,7 @@ void ExperimentManager::maybeSaveServiceTime(
         firstResponseFromNewServerAddressReceived_ = true;
       }
       return;
-    case ExperimentId::FIFTH:
+    case ExperimentId::FIVE:
       serviceTimes_.push_back(serviceTime);
       serverAddresses_.push_back(serverAddress.describe());
       requestTimestamps_.push_back(requestTimestamp);
@@ -381,7 +381,7 @@ void ExperimentManager::maybeSaveServiceTime(
 }
 
 void ExperimentManager::dumpServiceTimesToFile() {
-  if (experimentId_ == ExperimentId::THIRD) {
+  if (experimentId_ == ExperimentId::THREE) {
     return;
   }
 
@@ -400,14 +400,14 @@ void ExperimentManager::dumpServiceTimesToFile() {
   dynamic["serviceTimes"] = serviceTimes;
   dynamic["serverAddresses"] = serverAddresses;
 
-  if (experimentId_ == ExperimentId::FIRST ||
-      experimentId_ == ExperimentId::SECOND) {
+  if (experimentId_ == ExperimentId::ONE ||
+      experimentId_ == ExperimentId::TWO) {
     dynamic["firstRequestAfterMigrationTriggered"] =
         firstRequestAfterMigrationTriggered_;
   }
 
-  if (experimentId_ == ExperimentId::FOURTH ||
-      experimentId_ == ExperimentId::FIFTH) {
+  if (experimentId_ == ExperimentId::FOUR ||
+      experimentId_ == ExperimentId::FIVE) {
     folly::dynamic requestTimestamps = folly::dynamic::array();
     for (const auto &timestamp : requestTimestamps_) {
       requestTimestamps.push_back(timestamp);
@@ -415,7 +415,7 @@ void ExperimentManager::dumpServiceTimesToFile() {
     dynamic["requestTimestamps"] = requestTimestamps;
   }
 
-  if (experimentId_ == ExperimentId::FOURTH) {
+  if (experimentId_ == ExperimentId::FOUR) {
     dynamic["connectionEndedDueToTimeout"] = connectionEndedDueToTimeout_;
     dynamic["seed"] = seed_;
 

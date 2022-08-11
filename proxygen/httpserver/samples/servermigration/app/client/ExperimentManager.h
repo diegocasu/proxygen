@@ -65,26 +65,26 @@ class ExperimentManager
 
     // Experiment #1: measure the service time after server migration
     // depending only on the QUIC migration protocol.
-    FIRST = 1,
+    ONE = 1,
 
     // Experiment #2: measure the service time after server migration
     // depending on both the QUIC migration protocol and the container
     // migration.
-    SECOND = 2,
+    TWO = 2,
 
     // Experiment #3: measure migration notification time depending on
     // the number of clients and the migration protocol.
-    THIRD = 3,
+    THREE = 3,
 
     // Experiment #4: record service times over time when multiple
     // clients are connected, and the server migrates.
-    FOURTH = 4,
+    FOUR = 4,
 
     // Experiment #5: record service times over time when server migration
     // is triggered by client handovers.
-    FIFTH = 5,
+    FIVE = 5,
 
-    MAX = FIFTH,
+    MAX = FIVE,
   };
 
   void waitForResponseOrRetransmit(const folly::SocketAddress& destination,
