@@ -94,7 +94,7 @@ def perform_handover(selected_access_point=None):
     # Apply traffic control settings.
     logger.info("Applying traffic control settings")
     cmd_tc = "sudo bash ../tc/tc_setup_experiment_5.sh"
-    logger.info("Running '{}'".format(cmd_routing))
+    logger.info("Running '{}'".format(cmd_tc))
     os.system(cmd_tc)
 
     return True
