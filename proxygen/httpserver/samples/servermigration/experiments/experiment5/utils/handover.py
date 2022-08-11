@@ -41,19 +41,22 @@ def get_current_access_point():
     return None
 
 
-def perform_handover():
-    current_access_point = get_current_access_point()
-    if current_access_point is None:
-        logger.error("Not connected to an access point. Exiting")
-        return False
+def perform_handover(selected_access_point=None):
+    if selected_access_point is None:
+        current_access_point = get_current_access_point()
+        if current_access_point is None:
+            logger.error("Not connected to an access point. Exiting")
+            return False
+
+        new_access_point = current_access_point.choose_next_ap_for_handover()
+        if new_access_point is None:
+            logger.error(
+                "Cannot choose the next access point for the handover. Exiting")
+            return False
+    else:
+        new_access_point = selected_access_point
 
     # Perform handover. Try multiple times until the connection succeeds.
-    new_access_point = current_access_point.choose_next_ap_for_handover()
-    if new_access_point is None:
-        logger.error(
-            "Cannot choose the next access point for the handover. Exiting")
-        return False
-
     attempts = 1
     max_attempts = 5
 
@@ -78,10 +81,11 @@ def perform_handover():
 
     # Update routing table 100 to force traffic towards the servers via the
     # WiFi interface. This is mandatory considering the current testbed setup
-    # (both a WiFi interface and an Ethernet one in the same machine, together
+    # (both WiFi and Ethernet interfaces in the same machine, together
     # with Docker taking care of the client application). Routing table 100
     # is the routing table used to forward packets coming from the
     # docker_handover network (the one used by the client container).
+    logger.info("Updating routing table 100")
     cmd_routing = "sudo ip route add {} via {} table 100" \
         .format(new_access_point.server_subnet, new_access_point.gateway)
     logger.info("Running '{}'".format(cmd_routing))

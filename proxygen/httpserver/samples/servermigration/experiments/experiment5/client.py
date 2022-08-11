@@ -340,6 +340,20 @@ def main():
                         .format(migration_frequency,
                                 json.dumps(config, indent=4)))
 
+            # Always start connected to AP1.
+            success = perform_handover(selected_access_point=AccessPoint.AP1)
+            if not success:
+                logger.error("Impossible to start the run: "
+                             "cannot connect to the access point")
+                stop_container_and_clean_files(
+                    container_name, config_file, service_times_file)
+                send_shutdown(args.first_server_ip, args.management_port)
+                send_shutdown(args.first_server_ip, 19888)
+                send_shutdown(args.second_server_ip, 18863, tcp_socket=True)
+                logger.info("Sleeping for 10 seconds before the next run")
+                time.sleep(10)
+                continue
+
             # Start the client container.
             update_configuration_file(container_name, config_file,
                                       app_config_container_path, config)
