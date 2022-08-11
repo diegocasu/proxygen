@@ -1,0 +1,19 @@
+{
+  "host": "0.0.0.0",
+  "port": 6666,
+  "managementPort": 7777,
+  "numberOfWorkerThreads": 1,
+  "serverMigration": {
+    "enable": true,
+    "explicit": true,
+    "poolOfAddresses": false,
+    "addressPool": [],
+    "symmetric": true,
+    "synchronizedSymmetric": false
+  },
+  "memoryFootprintInflation": {
+    "enable": false,
+    "additionalBytes": 0
+  },
+  "seed": 1
+}
