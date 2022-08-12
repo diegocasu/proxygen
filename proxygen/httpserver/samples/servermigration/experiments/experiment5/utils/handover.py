@@ -71,8 +71,9 @@ def perform_handover(selected_access_point=None):
             return False
 
         logger.info("Running '{}'".format(cmd_handover))
-        ret = os.system(cmd_handover)
-        if ret != 0:
+        cmd_output = subprocess.run(cmd_handover, stdout=subprocess.PIPE,
+                                    shell=True).stdout.decode().strip()
+        if "error" in cmd_output.lower():
             logger.error("Failed handover attempt {}/5".format(attempts))
             attempts += 1
             time.sleep(1)
