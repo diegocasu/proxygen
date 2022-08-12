@@ -20,16 +20,16 @@ logger.setLevel(logging.DEBUG)
 
 def exit_handler(container_name, logs_destination_path,
                  config_file, service_times_file, results):
-    stop_container_and_clean_files(container_name, config_file,
-                                   service_times_file)
-    append_docker_container_logs(container_name, logs_destination_path)
-    remove_docker_container(container_name)
+    stop_container_and_clean_files(container_name, logs_destination_path,
+                                   config_file, service_times_file)
     dump_experiment_results_to_file(results, call_from_exit_handler=True)
 
 
-def stop_container_and_clean_files(container_name, config_file,
-                                   service_times_file):
+def stop_container_and_clean_files(container_name, logs_destination_path,
+                                   config_file, service_times_file):
     kill_docker_container(container_name)
+    append_docker_container_logs(container_name, logs_destination_path)
+    remove_docker_container(container_name)
     try:
         os.remove(config_file)
     except:
@@ -336,9 +336,6 @@ def main():
     atexit.register(exit_handler, container_name, logs_destination_path,
                     config_file, service_times_file, results)
 
-    create_docker_container(container_name, docker_network, AppMode.CLIENT,
-                            config_file, vlog_level=3)
-
     run = 0
     seed = 0
     session_duration = 60  # 1 hour, expressed in minutes
@@ -360,7 +357,9 @@ def main():
                 logger.error("Impossible to start the run: "
                              "cannot connect to the access point")
                 stop_container_and_clean_files(
-                    container_name, config_file, service_times_file)
+                    container_name, logs_destination_path,
+                    config_file, service_times_file)
+
                 send_shutdown(args.first_server_ip, args.management_port)
                 send_shutdown(args.first_server_ip, 19888)
                 send_shutdown(args.second_server_ip, 18863, tcp_socket=True)
@@ -369,6 +368,8 @@ def main():
                 continue
 
             # Start the client container.
+            create_docker_container(container_name, docker_network,
+                                    AppMode.CLIENT, config_file, vlog_level=3)
             update_configuration_file(container_name, config_file,
                                       app_config_container_path, config)
             start_docker_container(container_name)
@@ -401,7 +402,8 @@ def main():
             logger.info(
                 "End of an experiment run: stopping container, if still up")
             stop_container_and_clean_files(
-                container_name, config_file, service_times_file)
+                container_name, logs_destination_path,
+                config_file, service_times_file)
 
             # Sleep before starting a new run.
             logger.info("Sleeping for 10 seconds before the next run")
