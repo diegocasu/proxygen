@@ -177,6 +177,7 @@ def migrate_periodically_and_shutdown(session_duration, migration_frequency,
         # Perform handover.
         success = perform_handover()
         if not success:
+            logger.error("Stopping run after handover failure")
             kill_docker_container(container_name)
             early_exit = True
             break
@@ -189,6 +190,8 @@ def migrate_periodically_and_shutdown(session_duration, migration_frequency,
         state = get_docker_container_state(container_name)
         if state == DockerContainerState.EXITED \
                 or state == DockerContainerState.PAUSED:
+            logger.error("Client application timed out after client handover. "
+                         "Stopping run")
             early_exit = True
             break
 
@@ -223,6 +226,8 @@ def migrate_periodically_and_shutdown(session_duration, migration_frequency,
             state = get_docker_container_state(container_name)
             if state == DockerContainerState.EXITED \
                     or state == DockerContainerState.PAUSED:
+                logger.error("Client application timed out after "
+                             "server migration. Stopping run")
                 early_exit = True
                 break
 
