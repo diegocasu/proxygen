@@ -266,13 +266,15 @@ def parse_service_times_dump(container_name, service_times_file,
 
 
 def save_service_times(results, service_times, run, repetition, seed,
-                       quic_protocol, migration_notification_timestamps,
+                       quic_protocol, migration_frequency,
+                       migration_notification_timestamps,
                        migration_trigger_timestamps):
     results["experiment"].append(5)
     results["run"].append(run)
     results["repetition"].append(repetition)
     results["seed"].append(seed)
     results["protocol"].append(quic_protocol)
+    results["clientMigrationFrequency [min]"].append(migration_frequency)
     results["requestTimestamps [us]"] \
         .append(service_times.get("requestTimestamps", None))
     results["serviceTimes [us]"] \
@@ -308,8 +310,9 @@ def main():
         "/usr/src/app/proxygen/" + service_times_file
 
     results = {"experiment": [], "run": [], "repetition": [], "seed": [],
-               "protocol": [], "requestTimestamps [us]": [],
-               "serviceTimes [us]": [], "serverAddresses": [],
+               "protocol": [], "clientMigrationFrequency [min]": [],
+               "requestTimestamps [us]": [], "serviceTimes [us]": [],
+               "serverAddresses": [],
                "migrationNotificationTimestamps [s]": [],
                "migrationTriggerTimestamps [s]": []}
 
@@ -377,6 +380,7 @@ def main():
 
             save_service_times(results, service_times, run, i, config["seed"],
                                config["experiment"]["serverMigrationProtocol"],
+                               migration_frequency,
                                migration_notification_timestamps,
                                migration_trigger_timestamps)
 
