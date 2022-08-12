@@ -458,7 +458,6 @@ def main():
             # Sleep before starting a new run.
             logger.info("Sleeping for 5 seconds before the next run")
             time.sleep(5)
-            run += 1
 
     logger.info("Ending the experiment")
     dump_experiment_results_to_file(results, args.first_role)
