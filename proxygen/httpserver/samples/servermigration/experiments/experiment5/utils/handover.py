@@ -16,12 +16,11 @@ logger.setLevel(logging.DEBUG)
 
 
 class AccessPoint(enum.Enum):
-    AP1 = "192.168.10.1", "192.168.1.0/24"
-    AP2 = "192.168.20.1", "192.168.1.0/24"
+    AP1 = "192.168.10.1"
+    AP2 = "192.168.20.1"
 
-    def __init__(self, gateway, server_subnet):
+    def __init__(self, gateway):
         self.gateway = gateway
-        self.server_subnet = server_subnet
 
     def choose_next_ap_for_handover(self):
         if self == AccessPoint.AP1:
@@ -83,12 +82,24 @@ def perform_handover(selected_access_point=None):
     # Update routing table 100 to force traffic towards the servers via the
     # WiFi interface. This is mandatory considering the current testbed setup
     # (both WiFi and Ethernet interfaces in the same machine, together
-    # with Docker taking care of the client application). Routing table 100
-    # is the routing table used to forward packets coming from the
-    # docker_handover network (the one used by the client container).
+    # with Docker taking care of the client application).
+    # Routing table 100 is the routing table used to forward packets coming
+    # from the docker_handover network (the one used by the client container).
+    # Given that, during a handover, the following route is removed from
+    # table 100, the forwarding will employ the default routing table
+    # (table 254) if table 100 is empty. Then, table 100 must have another
+    # default gateway entry (a dummy default gateway) with metric higher than 0,
+    # such that the packets generated during handover and directed to the
+    # application servers are dropped, at least until the handover is completed.
+    # This entry must be set up outside these scripts, and before the beginning
+    # of the experiment. Currently, this is done creating a virtual dummy
+    # Ethernet interface, with address 192.168.200.1, and executing the
+    # command "ip route add default via 192.168.200.1 metric 200 table 100".
+    # Thus, here it is enough to add a default route towards the gateway of
+    # the access point's subnet, after the handover is completed.
     logger.info("Updating routing table 100")
-    cmd_routing = "sudo ip route add {} via {} table 100" \
-        .format(new_access_point.server_subnet, new_access_point.gateway)
+    cmd_routing = "sudo ip route add default via {} table 100" \
+        .format(new_access_point.gateway)
     logger.info("Running '{}'".format(cmd_routing))
     os.system(cmd_routing)
 
