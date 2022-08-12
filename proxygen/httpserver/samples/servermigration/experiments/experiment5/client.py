@@ -74,6 +74,36 @@ def generate_all_configs():
     return config_and_frequency_list
 
 
+def start_client_container(container_name, docker_network, config_file,
+                           app_config_container_path, config,
+                           logs_destination_path, service_times_file):
+    # Attempt to start the container until the handshake succeeds.
+    # The handshake could fail due to packet loss.
+    while True:
+        create_docker_container(container_name, docker_network,
+                                AppMode.CLIENT, config_file, vlog_level=3)
+        update_configuration_file(container_name, config_file,
+                                  app_config_container_path, config)
+        start_docker_container(container_name)
+
+        # Wait for 30 seconds and check if client container is still up.
+        # If it is not up, the handshake failed, so clean up and retry.
+        time.sleep(30)
+        state = get_docker_container_state(container_name)
+        if state == DockerContainerState.EXITED \
+                or state == DockerContainerState.PAUSED:
+            logger.error("Restarting the client container: handshake with the "
+                         "server failed")
+            stop_container_and_clean_files(
+                container_name, logs_destination_path,
+                config_file, service_times_file)
+            continue
+
+        logger.info("Client application successfully completed the "
+                    "handshake with the server")
+        break
+
+
 def update_configuration_file(container_name, config_name,
                               app_config_container_path, new_config):
     with open(config_name, "w") as config_file:
@@ -368,11 +398,9 @@ def main():
                 continue
 
             # Start the client container.
-            create_docker_container(container_name, docker_network,
-                                    AppMode.CLIENT, config_file, vlog_level=3)
-            update_configuration_file(container_name, config_file,
-                                      app_config_container_path, config)
-            start_docker_container(container_name)
+            start_client_container(container_name, docker_network, config_file,
+                                   app_config_container_path, config,
+                                   logs_destination_path, service_times_file)
 
             # Start periodic handovers followed by server migrations.
             handover_timestamps, migration_notification_timestamps, \
