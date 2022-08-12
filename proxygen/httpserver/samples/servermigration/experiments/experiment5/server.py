@@ -106,15 +106,12 @@ def generate_all_configs():
     combination_list = generate_experiment_combinations()
     config_path = "./baseconfigs/experiment5_server.json"
     config_and_frequency_list = []
-    seed = 1
 
     for combination in combination_list:
         with open(config_path, "r") as config_file:
             config = json.load(config_file)
             migration_frequency = combination[0]
-            config["seed"] = seed
             config_and_frequency_list.append((config, migration_frequency))
-        seed += 1
 
     return config_and_frequency_list
 
