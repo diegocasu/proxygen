@@ -158,6 +158,7 @@ def migrate_periodically_and_shutdown(session_duration, migration_frequency,
                                       first_server_ip, second_server_ip,
                                       server_app_port, server_management_port,
                                       quic_protocol, container_name):
+    handover_timestamp_list = []
     migration_notification_timestamp_list = []
     migration_trigger_timestamp_list = []
     n_migrations = int(session_duration / migration_frequency)
@@ -175,7 +176,9 @@ def migrate_periodically_and_shutdown(session_duration, migration_frequency,
         time.sleep(migration_frequency * 60)  # Frequency in seconds.
 
         # Perform handover.
+        handover_timestamp = time.time()
         success = perform_handover()
+        handover_timestamp_list.append(handover_timestamp)
         if not success:
             logger.error("Stopping run after handover failure")
             kill_docker_container(container_name)
@@ -241,7 +244,8 @@ def migrate_periodically_and_shutdown(session_duration, migration_frequency,
         send_shutdown(server_source_current_ip, 19888)
         send_shutdown(server_destination_current_ip, 18863, tcp_socket=True)
 
-    return migration_notification_timestamp_list, migration_trigger_timestamp_list
+    return handover_timestamp_list, migration_notification_timestamp_list, \
+           migration_trigger_timestamp_list
 
 
 def wait_for_client_termination(container_name):
@@ -272,6 +276,7 @@ def parse_service_times_dump(container_name, service_times_file,
 
 def save_service_times(results, service_times, run, repetition, seed,
                        quic_protocol, migration_frequency,
+                       handover_timestamps,
                        migration_notification_timestamps,
                        migration_trigger_timestamps):
     results["experiment"].append(5)
@@ -286,6 +291,7 @@ def save_service_times(results, service_times, run, repetition, seed,
         .append(service_times.get("serviceTimes", None))
     results["serverAddresses"] \
         .append(service_times.get("serverAddresses", None))
+    results["handoverTimestamps [s]"].append(handover_timestamps)
     results["migrationNotificationTimestamps [s]"] \
         .append(migration_notification_timestamps)
     results["migrationTriggerTimestamps [s]"] \
@@ -317,7 +323,7 @@ def main():
     results = {"experiment": [], "run": [], "repetition": [], "seed": [],
                "protocol": [], "clientMigrationFrequency [min]": [],
                "requestTimestamps [us]": [], "serviceTimes [us]": [],
-               "serverAddresses": [],
+               "serverAddresses": [], "handoverTimestamps [s]": [],
                "migrationNotificationTimestamps [s]": [],
                "migrationTriggerTimestamps [s]": []}
 
@@ -368,7 +374,8 @@ def main():
             start_docker_container(container_name)
 
             # Start periodic handovers followed by server migrations.
-            migration_notification_timestamps, migration_trigger_timestamps = \
+            handover_timestamps, migration_notification_timestamps, \
+            migration_trigger_timestamps = \
                 migrate_periodically_and_shutdown(
                     session_duration, migration_frequency,
                     args.first_server_ip, args.second_server_ip,
@@ -386,6 +393,7 @@ def main():
             save_service_times(results, service_times, run, i, config["seed"],
                                config["experiment"]["serverMigrationProtocol"],
                                migration_frequency,
+                               handover_timestamps,
                                migration_notification_timestamps,
                                migration_trigger_timestamps)
 
