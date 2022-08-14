@@ -84,7 +84,12 @@ class ExperimentManager
     // is triggered by client handovers.
     FIVE = 5,
 
-    MAX = FIVE,
+    // Experiment #6: record service times of the client while it migrates.
+    // The server never migrates in this scenario. This is a baseline for
+    // the experiment 5.
+    CLIENT_MIGRATION_BASELINE = 6,
+
+    MAX = CLIENT_MIGRATION_BASELINE,
   };
 
   void waitForResponseOrRetransmit(const folly::SocketAddress& destination,

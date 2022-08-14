@@ -189,7 +189,8 @@ void ExperimentManager::maybeNotifyImminentServerMigration(
       return;
     case ExperimentId::FOUR:
     case ExperimentId::FIVE:
-      return;
+    case ExperimentId::CLIENT_MIGRATION_BASELINE:
+      break;
   }
   LOG(ERROR) << "Unknown experiment ID. Stopping the manager";
   folly::assume_unreachable();
@@ -210,7 +211,8 @@ bool ExperimentManager::maybeTriggerServerMigration(
     case ExperimentId::THREE:
     case ExperimentId::FOUR:
     case ExperimentId::FIVE:
-      return false;
+    case ExperimentId::CLIENT_MIGRATION_BASELINE:
+      break;
   }
   LOG(ERROR) << "Unknown experiment ID. Stopping the manager";
   folly::assume_unreachable();
@@ -262,6 +264,7 @@ bool ExperimentManager::maybeStopExperiment(
       }
       return false;
     case ExperimentId::FIVE:
+    case ExperimentId::CLIENT_MIGRATION_BASELINE:
       // Stop the experiment only after an idle timeout.
       return false;
   }
@@ -307,6 +310,7 @@ void ExperimentManager::stopExperimentDueToTimeout(
       dumpServiceTimesToFile();
       return;
     case ExperimentId::FIVE:
+    case ExperimentId::CLIENT_MIGRATION_BASELINE:
       dumpServiceTimesToFile();
       return;
   }
@@ -371,6 +375,7 @@ void ExperimentManager::maybeSaveServiceTime(
       }
       return;
     case ExperimentId::FIVE:
+    case ExperimentId::CLIENT_MIGRATION_BASELINE:
       serviceTimes_.push_back(serviceTime);
       serverAddresses_.push_back(serverAddress.describe());
       requestTimestamps_.push_back(requestTimestamp);
@@ -407,7 +412,8 @@ void ExperimentManager::dumpServiceTimesToFile() {
   }
 
   if (experimentId_ == ExperimentId::FOUR ||
-      experimentId_ == ExperimentId::FIVE) {
+      experimentId_ == ExperimentId::FIVE ||
+      experimentId_ == ExperimentId::CLIENT_MIGRATION_BASELINE) {
     folly::dynamic requestTimestamps = folly::dynamic::array();
     for (const auto &timestamp : requestTimestamps_) {
       requestTimestamps.push_back(timestamp);
