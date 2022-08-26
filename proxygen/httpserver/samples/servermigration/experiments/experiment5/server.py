@@ -174,7 +174,9 @@ def migrate_to_destination(command_socket, runc_base, container_name,
 def receive_migration_from_source(migration_socket, command_socket,
                                   management_ip, management_port,
                                   total_restore_times):
-    restore_times = wait_for_server_migration(migration_socket)
+    restore_times = wait_for_server_migration(
+        migration_socket, command_socket,
+        management_ip, management_port)
     if not restore_times:
         return False
 
@@ -185,16 +187,6 @@ def receive_migration_from_source(migration_socket, command_socket,
         for key, value in total_restore_times.items():
             value.append(restore_times[key])
 
-    # Notify the server about the network switch.
-    # Since the server and the script are going to run on the same
-    # machine, there is no need to account for retransmissions.
-    switch_command = {"action": "onNetworkSwitch"}
-    command_socket.sendto(json.dumps(switch_command).encode(),
-                          (management_ip, management_port))
-    logger.info("Sent {} command to {}:{}"
-                .format(json.dumps(switch_command),
-                        management_ip,
-                        management_port))
     return True
 
 

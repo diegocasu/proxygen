@@ -175,18 +175,9 @@ def main():
                         total_restore_times)
 
         # Wait for a server migration and handle it.
-        restore_times = wait_for_server_migration(migration_socket)
-
-        # Notify the server about the network switch.
-        # Since the server and the script are going to run on the same
-        # machine, there is no need to account for retransmissions.
-        switch_command = {"action": "onNetworkSwitch"}
-        command_socket.sendto(json.dumps(switch_command).encode(),
-                              (args.management_ip, args.management_port))
-        logger.info("Sent {} command to {}:{}"
-                    .format(json.dumps(switch_command),
-                            args.management_ip,
-                            args.management_port))
+        restore_times = wait_for_server_migration(
+            migration_socket, command_socket,
+            args.management_ip, args.management_port)
 
         # Save restore times.
         save_restore_times(total_restore_times, restore_times, run, n_clients)

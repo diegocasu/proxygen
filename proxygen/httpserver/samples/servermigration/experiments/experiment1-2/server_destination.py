@@ -196,7 +196,10 @@ def main():
 
         # Wait for a server migration and handle it. If the latter is replaced
         # by a shutdown command, skip the execution to the next cycle.
-        restore_times = wait_for_server_migration(migration_socket)
+        restore_times = wait_for_server_migration(
+            migration_socket, command_socket,
+            args.management_ip, args.management_port)
+
         if not restore_times:
             # Save empty measurements and sleep before starting a new run.
             save_restore_times(total_restore_times, restore_times,
@@ -208,17 +211,6 @@ def main():
             logger.info("Sleeping for 5 seconds before the next run")
             time.sleep(5)
             continue
-
-        # Notify the server about the network switch.
-        # Since the server and the script are going to run on the same
-        # machine, there is no need to account for retransmissions.
-        switch_command = {"action": "onNetworkSwitch"}
-        command_socket.sendto(json.dumps(switch_command).encode(),
-                              (args.management_ip, args.management_port))
-        logger.info("Sent {} command to {}:{}"
-                    .format(json.dumps(switch_command),
-                            args.management_ip,
-                            args.management_port))
 
         # Save restore times.
         save_restore_times(total_restore_times, restore_times,

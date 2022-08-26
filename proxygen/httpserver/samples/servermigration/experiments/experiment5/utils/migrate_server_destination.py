@@ -66,7 +66,8 @@ def _parse_lazy_pages_measurements(output_file):
     return None, None, None
 
 
-def _handle_server_migration(conn, addr):
+def _handle_server_migration(conn, addr, command_socket, management_ip,
+                             management_port):
     data = conn.recv(1024)
     if not data:
         logger.error("Received no data")
@@ -144,6 +145,16 @@ def _handle_server_migration(conn, addr):
         if ret == 0:
             reply = "runc restored {} successfully" \
                 .format(msg["restore"]["name"])
+
+            # Notify the server about the network switch.
+            # Since the server and the script are running on the same
+            # machine, there is no need to account for retransmissions.
+            switch_command = {"action": "onNetworkSwitch"}
+            command_socket.sendto(json.dumps(switch_command).encode(),
+                                  (management_ip, management_port))
+            logger.info("Sent {} command to {}:{}"
+                        .format(json.dumps(switch_command), management_ip,
+                                management_port))
         else:
             reply = "runc failed({:d})".format(ret)
 
@@ -177,10 +188,16 @@ def _handle_server_migration(conn, addr):
         _error()
 
 
-def wait_for_server_migration(migration_socket):
+def wait_for_server_migration(migration_socket, command_socket,
+                              management_ip, management_port):
     """
     Wait for and handle a server migration.
     :param migration_socket:  the socket dedicated to server migration.
+    :param command_socket     the socket dedicated to send commands to the
+                              server management interface.
+    :param management_ip      the ip address of the server management interface.
+    :param management_port    the listening port of the server management
+                              interface.
     :return:                  a dictionary of 4 elements, containing the restore
                               time, the lazy pages transfer time, the lazy pages
                               transfer end time and the number of lazy pages
@@ -192,4 +209,5 @@ def wait_for_server_migration(migration_socket):
     conn, addr = migration_socket.accept()
     with conn:
         logger.info("Connected with {}:{}".format(*addr))
-        return _handle_server_migration(conn, addr)
+        return _handle_server_migration(conn, addr, command_socket,
+                                        management_ip, management_port)
