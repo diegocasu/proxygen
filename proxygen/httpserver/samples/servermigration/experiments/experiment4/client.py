@@ -154,36 +154,52 @@ def stop_all_containers_and_console_sockets(container_names,
                             console_socket_files[i])
 
 
-def notify_imminent_server_migration(server_ip, destination_address,
+def notify_imminent_server_migration(migration_notification_socket,
+                                     server_ip, destination_address,
                                      management_port, protocol):
     if "Explicit" in protocol:
         command = json.dumps({"action": "onImminentServerMigration",
                               "protocol": "Explicit",
-                              "address": destination_address})
+                              "address": destination_address,
+                              "notifyMigrationReady": True})
     elif protocol == "poolOfAddresses":
         command = json.dumps({"action": "onImminentServerMigration",
-                              "protocol": "Pool of Addresses"})
+                              "protocol": "Pool of Addresses",
+                              "notifyMigrationReady": True})
     elif protocol == "symmetric":
         command = json.dumps({"action": "onImminentServerMigration",
-                              "protocol": "Symmetric"})
+                              "protocol": "Symmetric",
+                              "notifyMigrationReady": True})
     elif protocol == "synchronizedSymmetric":
         command = json.dumps({"action": "onImminentServerMigration",
-                              "protocol": "Synchronized Symmetric"})
+                              "protocol": "Synchronized Symmetric",
+                              "notifyMigrationReady": True})
     else:
         raise RuntimeError("Invalid QUIC migration protocol")
 
     logger.info("Notifying imminent server migration sending command {} "
                 "to {}:{}".format(command, server_ip, management_port))
-    sock = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
-    sock.sendto(command.encode(), (server_ip, management_port))
+    migration_notification_socket.sendto(command.encode(),
+                                         (server_ip, management_port))
 
     logger.info("Waiting for the response")
     while True:
-        message, address = sock.recvfrom(1024)
+        message, address = migration_notification_socket.recvfrom(1024)
         message = message.decode()
         logger.info("Received message '{}' from {}:{}"
                     .format(message, *address))
         if message == "OK":
+            return
+
+
+def wait_for_migration_ready_notification(migration_notification_socket):
+    logger.info("Waiting for the server to be ready for migration")
+    while True:
+        message, address = migration_notification_socket.recvfrom(1024)
+        message = message.decode()
+        logger.info("Received message '{}' from {}:{}"
+                    .format(message, *address))
+        if message == "migration ready":
             return
 
 
@@ -324,9 +340,13 @@ def main():
                "migrationNotificationTimestamp [s]": [],
                "migrationTriggerTimestamp [s]": []}
 
-    # Times in seconds used to drive the experiment events.
+    # Time in second used to drive the occurrence of a migration.
     sleep_before_imminent_migration = 90
-    sleep_before_migration_trigger = 10
+
+    # Socket used to inform the server about the imminent migration,
+    # and receive the notification about its readiness.
+    migration_notification_socket = socket.socket(
+        socket.AF_INET, socket.SOCK_DGRAM)
 
     run = 1
     n_clients = 30
@@ -355,13 +375,14 @@ def main():
         time.sleep(sleep_before_imminent_migration)
         migration_notification_timestamp = time.time()
         notify_imminent_server_migration(
+            migration_notification_socket,
             args.server_ip,
             args.destination_address,
             args.management_port,
             config["experiment"]["serverMigrationProtocol"])
 
-        # Wait and trigger the migration.
-        time.sleep(sleep_before_migration_trigger)
+        # Wait for the server to be ready and trigger the migration.
+        wait_for_migration_ready_notification(migration_notification_socket)
         migration_trigger_timestamp = time.time()
         trigger_server_migration(args.container_migration_script_ip)
 
