@@ -287,6 +287,7 @@ void Client::scheduleRequests() {
     // This method blocks for the required amount of time
     // if the request pattern is sporadic.
     auto request = requestScheduler_->nextRequest();
+    auto requestBodySize = request.body->length();
 
     evb->runInEventBaseThreadAndWait([&] {
       auto transaction = session_->newTransaction(curl_.get());
@@ -331,7 +332,7 @@ void Client::scheduleRequests() {
       // stopExperimentDueToTimeout().
       break;
     }
-    getAndPrintReceivedResponse();
+    auto responseBodySize = getAndPrintReceivedResponse();
 
     ++numberOfCompletedRequests;
     --numberOfOpenableStreams;
@@ -340,6 +341,9 @@ void Client::scheduleRequests() {
         numberOfCompletedRequests);
     experimentManager_->maybeSaveServiceTime(numberOfCompletedRequests,
                                              requestTimestamp,
+                                             request.httpMethod,
+                                             requestBodySize,
+                                             responseBodySize,
                                              serviceTime,
                                              curl_->getResponseAddress());
     triggerPTO = experimentManager_->maybeTriggerServerMigration(
@@ -355,7 +359,7 @@ void Client::scheduleRequests() {
   LOG(INFO) << "Stopping the client";
 }
 
-void Client::getAndPrintReceivedResponse() {
+std::size_t Client::getAndPrintReceivedResponse() {
   auto responseHeaders = curl_->getResponseHeaders();
   auto responseBody = curl_->getResponseBody();
   auto& responseAddress = curl_->getResponseAddress();
@@ -371,8 +375,10 @@ void Client::getAndPrintReceivedResponse() {
   if (responseBody) {
     VLOG(1) << fmt::format("Received response body of size={} bytes",
                            responseBody->length());
+    return responseBody->length();
   } else {
     VLOG(1) << "Received empty body";
+    return 0;
   }
 }
 

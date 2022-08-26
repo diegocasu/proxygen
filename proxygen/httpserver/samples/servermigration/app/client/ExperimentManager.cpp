@@ -321,6 +321,9 @@ void ExperimentManager::stopExperimentDueToTimeout(
 void ExperimentManager::maybeSaveServiceTime(
     const int64_t &requestNumber,
     const long &requestTimestamp,
+    const proxygen::HTTPMethod &requestMethod,
+    const std::size_t &requestBodySize,
+    const std::size_t &responseBodySize,
     const long &serviceTime,
     const folly::SocketAddress &serverAddress) {
   switch (experimentId_) {
@@ -363,6 +366,9 @@ void ExperimentManager::maybeSaveServiceTime(
       serviceTimes_.push_back(serviceTime);
       serverAddresses_.push_back(serverAddress.describe());
       requestTimestamps_.push_back(requestTimestamp);
+      requestHttpMethods_.push_back(methodToString(requestMethod));
+      requestBodySizes_.push_back(requestBodySize);
+      responseBodySizes_.push_back(responseBodySize);
 
       if (requestNumber == 1) {
         originalServerAddress_ = serverAddress;
@@ -422,6 +428,18 @@ void ExperimentManager::dumpServiceTimesToFile() {
   }
 
   if (experimentId_ == ExperimentId::FOUR) {
+    folly::dynamic requestMethods = folly::dynamic::array();
+    folly::dynamic requestBodySizes = folly::dynamic::array();
+    folly::dynamic responseBodySizes = folly::dynamic::array();
+    for (auto i = 0u; i < requestHttpMethods_.size(); i++) {
+      requestMethods.push_back(requestHttpMethods_[i]);
+      requestBodySizes.push_back(requestBodySizes_[i]);
+      responseBodySizes.push_back(responseBodySizes_[i]);
+    }
+
+    dynamic["requestMethods"] = requestMethods;
+    dynamic["requestBodySizes"] = requestBodySizes;
+    dynamic["responseBodySizes"] = responseBodySizes;
     dynamic["connectionEndedDueToTimeout"] = connectionEndedDueToTimeout_;
     dynamic["seed"] = seed_;
 

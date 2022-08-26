@@ -303,6 +303,12 @@ def save_service_times(results, service_times_list, run, n_clients,
             .append(service_times.get("serviceTimes", None))
         results["serverAddresses"] \
             .append(service_times.get("serverAddresses", None))
+        results["requestMethods"] \
+            .append(service_times.get("requestMethods", None))
+        results["requestBodySizes [B]"] \
+            .append(service_times.get("requestBodySizes", None))
+        results["responseBodySizes [B]"] \
+            .append(service_times.get("responseBodySizes", None))
         results["connectionEndedDueToTimeout"] \
             .append(service_times.get("connectionEndedDueToTimeout", None))
         results["migrationNotificationTimestamp [s]"] \
@@ -336,7 +342,9 @@ def main():
                "numberOfClients": [], "protocol": [],
                "intervalBetweenRequests [ms]": [],
                "requestTimestamps [us]": [], "serviceTimes [us]": [],
-               "serverAddresses": [], "connectionEndedDueToTimeout": [],
+               "serverAddresses": [], "requestMethods": [],
+               "requestBodySizes": [], "responseBodySizes": [],
+               "connectionEndedDueToTimeout": [],
                "migrationNotificationTimestamp [s]": [],
                "migrationTriggerTimestamp [s]": []}
 

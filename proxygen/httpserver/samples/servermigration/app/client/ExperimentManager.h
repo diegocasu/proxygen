@@ -3,6 +3,7 @@
 #include <folly/dynamic.h>
 #include <folly/fibers/Baton.h>
 #include <folly/io/async/AsyncUDPSocket.h>
+#include <proxygen/lib/http/HTTPMethod.h>
 #include <quic/QuicConstants.h>
 
 namespace quic::samples::servermigration {
@@ -32,6 +33,9 @@ class ExperimentManager
   bool maybeStopExperiment(const int64_t& numberOfCompletedRequests);
   void maybeSaveServiceTime(const int64_t& requestNumber,
                             const long& requestTimestamp,
+                            const proxygen::HTTPMethod& requestMethod,
+                            const std::size_t& requestBodySize,
+                            const std::size_t& responseBodySize,
                             const long& serviceTime,
                             const folly::SocketAddress& serverAddress);
   void stopExperimentDueToTimeout(const folly::IPAddress& currentPeerAddress);
@@ -151,6 +155,12 @@ class ExperimentManager
 
   // Seed used in the third experiment to make the service times file unique.
   int64_t seed_;
+
+  // Variables used in the fourth experiment to record HTTP
+  // methods of requests, and request/response body sizes.
+  std::vector<std::string> requestHttpMethods_;
+  std::vector<std::size_t> requestBodySizes_;
+  std::vector<std::size_t> responseBodySizes_;
 };
 
 } // namespace quic::samples::servermigration
