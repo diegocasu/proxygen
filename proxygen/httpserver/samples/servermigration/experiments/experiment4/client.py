@@ -343,7 +343,7 @@ def main():
                "intervalBetweenRequests [ms]": [],
                "requestTimestamps [us]": [], "serviceTimes [us]": [],
                "serverAddresses": [], "requestMethods": [],
-               "requestBodySizes": [], "responseBodySizes": [],
+               "requestBodySizes [B]": [], "responseBodySizes [B]": [],
                "connectionEndedDueToTimeout": [],
                "migrationNotificationTimestamp [s]": [],
                "migrationTriggerTimestamp [s]": []}
