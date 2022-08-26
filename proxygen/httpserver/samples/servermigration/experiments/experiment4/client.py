@@ -177,7 +177,7 @@ def notify_imminent_server_migration(migration_notification_socket,
     else:
         raise RuntimeError("Invalid QUIC migration protocol")
 
-    logger.info("Notifying imminent server migration sending command {} "
+    logger.info("Notifying imminent server migration sending command '{}' "
                 "to {}:{}".format(command, server_ip, management_port))
     migration_notification_socket.sendto(command.encode(),
                                          (server_ip, management_port))
@@ -205,7 +205,7 @@ def wait_for_migration_ready_notification(migration_notification_socket):
 
 def trigger_server_migration(container_migration_script_ip):
     command = "migrate"
-    logger.info("Triggering server migration sending command {} to {}:{}"
+    logger.info("Triggering server migration sending command '{}' to {}:{}"
                 .format(command, container_migration_script_ip, 19888))
     sock = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
     sock.sendto(command.encode(), (container_migration_script_ip, 19888))
