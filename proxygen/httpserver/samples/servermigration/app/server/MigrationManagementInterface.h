@@ -20,12 +20,14 @@ namespace quic::samples::servermigration {
  * {
  *  "action": "onImminentServerMigration",
  *  "protocol": "PROTOCOL",
- *  "address": "IP:PORT"
+ *  "address": "IP:PORT",
+ *  "notifyMigrationReady": true/false
  * }
  *
- * where "protocol" can be "Explicit", "Pool of Addresses", "Symmetric" or
- * "Synchronized Symmetric", and "address" is mandatory only if the protocol
- * is Explicit (otherwise, it is ignored).
+ * where "protocol" can be "Explicit", "Pool of Addresses", "Symmetric", or
+ * "Synchronized Symmetric", "address" is mandatory only if the protocol
+ * is Explicit (otherwise, it is ignored), and "notifyMigrationReady" is
+ * mandatory only if equal to true (otherwise, it can be omitted).
  *
  * 2) commands to notify that a server migration has been completed. They are
  * used to let the server know that a migration has ended (possibly inform
@@ -58,6 +60,7 @@ class MigrationManagementInterface
     Action action;
     folly::Optional<ServerMigrationProtocol> protocol;
     folly::Optional<folly::SocketAddress> address;
+    folly::Optional<bool> notifyMigrationReady;
   };
 
   MigrationManagementInterface(std::string host,
@@ -116,6 +119,7 @@ class MigrationManagementInterface
       const MigrationManagementInterface::Command& command);
   void handleOnNetworkSwitchCommand(const folly::SocketAddress& client);
   void handleShutdownCommand(const folly::SocketAddress& client);
+  void maybeNotifyMigrationReady();
 
   enum TransportMigrationState {
     NOT_READY,
@@ -145,6 +149,12 @@ class MigrationManagementInterface
 
   // Managed server.
   std::shared_ptr<QuicServer> quicServer_;
+
+  // Variables used to check if the server should notify its readiness
+  // for migration, and to save the address to be notified.
+  bool notifyMigrationReady_{false};
+  folly::Optional<folly::SocketAddress> imminentMigrationNotifier_;
+  std::string migrationReadyMsg = "migration ready";
 
   // Migration notification time measured during the session. The value is
   // significant only if recorded during the third experiment, where a single

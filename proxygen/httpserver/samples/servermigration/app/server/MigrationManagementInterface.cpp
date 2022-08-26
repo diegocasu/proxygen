@@ -10,6 +10,8 @@ void MigrationManagementInterface::resetMigrationState() {
   networkSwitched_ = false;
   numberOfTransportsReady_ = 0;
   numberOfTransportsMigrated_ = 0;
+  notifyMigrationReady_ = false;
+  imminentMigrationNotifier_.clear();
 }
 
 MigrationManagementInterface::MigrationManagementInterface(
@@ -105,6 +107,7 @@ void MigrationManagementInterface::onConnectionClose(
     migrationReadyTime_ = std::chrono::steady_clock::now();
     numberOfClientsReadyForMigration_ = numberOfTransportsReady_;
     transportsReady_ = true;
+    maybeNotifyMigrationReady();
     VLOG(1) << "Server ready for migration";
   }
 }
@@ -131,6 +134,7 @@ void MigrationManagementInterface::onServerMigrationReady(
     migrationReadyTime_ = std::chrono::steady_clock::now();
     numberOfClientsReadyForMigration_ = numberOfTransportsReady_;
     transportsReady_ = true;
+    maybeNotifyMigrationReady();
     VLOG(1) << "Server ready for migration";
   }
 }
@@ -219,6 +223,8 @@ void MigrationManagementInterface::handleOnImminentServerMigrationCommand(
       quicServer_->onImminentServerMigration(command.protocol.value(),
                                              folly::none);
     }
+    notifyMigrationReady_ = command.notifyMigrationReady.value();
+    imminentMigrationNotifier_ = client;
 
     // Handle the case in which no transports are migrated, so no calls
     // to onServerMigrationFailed() or onServerMigrationReady() happen.
@@ -227,10 +233,24 @@ void MigrationManagementInterface::handleOnImminentServerMigrationCommand(
       migrationReadyTime_ = std::chrono::steady_clock::now();
       numberOfClientsReadyForMigration_ = numberOfTransportsReady_;
       transportsReady_ = true;
+      maybeNotifyMigrationReady();
       VLOG(1) << "Server ready for migration";
     }
   }
   socket_->write(client, folly::IOBuf::copyBuffer("OK"));
+}
+
+void MigrationManagementInterface::maybeNotifyMigrationReady() {
+  if (notifyMigrationReady_) {
+    // Send migration ready notification. Do not retransmit the notification
+    // in case of packet loss: the peer will automatically start the migration
+    // after a timeout.
+    VLOG(1) << fmt::format("Sending '{}' to {}",
+                           migrationReadyMsg,
+                           imminentMigrationNotifier_->describe());
+    socket_->write(imminentMigrationNotifier_.value(),
+                   folly::IOBuf::copyBuffer(migrationReadyMsg));
+  }
 }
 
 void MigrationManagementInterface::handleOnNetworkSwitchCommand(

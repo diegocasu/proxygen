@@ -48,6 +48,9 @@ std::string managementCommandToJsonString(
       if (command.address) {
         dynamic["address"] = command.address->describe();
       }
+      if (command.notifyMigrationReady) {
+        dynamic["notifyMigrationReady"] = command.notifyMigrationReady.value();
+      }
       return folly::toJson(dynamic);
     case MigrationManagementInterface::Action::ON_NETWORK_SWITCH:
       dynamic["action"] = "onNetworkSwitch";
@@ -95,6 +98,13 @@ MigrationManagementInterface::Command managementCommandFromJsonString(
   } else {
     throw std::runtime_error("Bad protocol");
   }
+
+  parsedCommand.notifyMigrationReady = false;
+  if (dynamic.find("notifyMigrationReady") != dynamic.items().end() &&
+      dynamic["notifyMigrationReady"].asBool()) {
+    parsedCommand.notifyMigrationReady = true;
+  }
+
   return parsedCommand;
 }
 
