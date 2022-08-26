@@ -190,7 +190,7 @@ void ExperimentManager::maybeNotifyImminentServerMigration(
     case ExperimentId::FOUR:
     case ExperimentId::FIVE:
     case ExperimentId::CLIENT_MIGRATION_BASELINE:
-      break;
+      return;
   }
   LOG(ERROR) << "Unknown experiment ID. Stopping the manager";
   folly::assume_unreachable();
@@ -212,7 +212,7 @@ bool ExperimentManager::maybeTriggerServerMigration(
     case ExperimentId::FOUR:
     case ExperimentId::FIVE:
     case ExperimentId::CLIENT_MIGRATION_BASELINE:
-      break;
+      return false;
   }
   LOG(ERROR) << "Unknown experiment ID. Stopping the manager";
   folly::assume_unreachable();
