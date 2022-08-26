@@ -287,7 +287,10 @@ void Client::scheduleRequests() {
     // This method blocks for the required amount of time
     // if the request pattern is sporadic.
     auto request = requestScheduler_->nextRequest();
-    auto requestBodySize = request.body->length();
+    std::size_t requestBodySize = 0;
+    if (request.body) {
+      requestBodySize = request.body->length();
+    }
 
     evb->runInEventBaseThreadAndWait([&] {
       auto transaction = session_->newTransaction(curl_.get());
