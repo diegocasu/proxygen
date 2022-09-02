@@ -30,8 +30,7 @@ class ExperimentManager
    */
   bool maybeTriggerServerMigration(const int64_t& numberOfCompletedRequests);
 
-  bool maybeStopExperiment(const int64_t& numberOfCompletedRequests,
-                           const folly::IPAddress& currentPeerAddress);
+  bool maybeStopExperiment(const int64_t& numberOfCompletedRequests);
   void maybeSaveServiceTime(const int64_t& requestNumber,
                             const long& requestTimestamp,
                             const proxygen::HTTPMethod& requestMethod,
@@ -39,7 +38,7 @@ class ExperimentManager
                             const std::size_t& responseBodySize,
                             const long& serviceTime,
                             const folly::SocketAddress& serverAddress);
-  void stopExperimentDueToTimeout(const folly::IPAddress& currentPeerAddress);
+  void stopExperimentDueToTimeout();
   void dumpServiceTimesToFile();
 
   /**
@@ -122,10 +121,8 @@ class ExperimentManager
   // so that subsequent commands can be correctly sent.
   folly::SocketAddress serverManagementAddress_;
   ServerMigrationProtocol migrationProtocol_;
+  folly::SocketAddress migrationAddress_;
   bool proactiveExplicit_{false};
-  // The migration address is valid only if the Explicit
-  // protocol is chosen, otherwise it is empty.
-  folly::Optional<folly::SocketAddress> migrationAddress_;
 
   // Information used to contact the container migration script
   // and trigger a container migration.
@@ -139,6 +136,10 @@ class ExperimentManager
   std::vector<std::string> serverAddresses_;
   int64_t firstRequestAfterMigrationTriggered_{-1};
   std::string serviceTimesFile_{"service_times.json"};
+
+  // Flag used in the second experiment to check
+  // if migration was triggered or not.
+  bool migrationTriggered_{false};
 
   // Flag used to record if the connection ended due to a timeout.
   // It is used only in the fourth experiment.

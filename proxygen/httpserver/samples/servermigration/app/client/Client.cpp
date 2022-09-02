@@ -327,8 +327,7 @@ void Client::scheduleRequests() {
     if (!gotResponse) {
       LOG(ERROR) << "Connection timeout while waiting for the response. "
                     "Stopping the client";
-      experimentManager_->stopExperimentDueToTimeout(
-          quicClient_->getPeerAddress().getIPAddress());
+      experimentManager_->stopExperimentDueToTimeout();
       // Do not save the measurements to notify that the execution ended
       // with an error. The only exceptions are the fourth and fifth
       // experiments, which are handled directly inside
@@ -352,9 +351,8 @@ void Client::scheduleRequests() {
     triggerPTO = experimentManager_->maybeTriggerServerMigration(
         numberOfCompletedRequests);
     maybeUpdateServerManagementAddress();
-    auto stop = experimentManager_->maybeStopExperiment(
-        numberOfCompletedRequests,
-        quicClient_->getPeerAddress().getIPAddress());
+    auto stop =
+        experimentManager_->maybeStopExperiment(numberOfCompletedRequests);
     if (stop) {
       experimentManager_->dumpServiceTimesToFile();
       break;

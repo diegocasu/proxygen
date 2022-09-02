@@ -37,10 +37,6 @@ ExperimentManager::ExperimentManager(const folly::dynamic &config,
   if (protocolField == "proactiveExplicit" ||
       protocolField == "reactiveExplicit") {
     migrationProtocol_ = ServerMigrationProtocol::EXPLICIT;
-    migrationAddress_ = folly::SocketAddress(
-        config["experiment"]["serverMigrationHost"].asString(),
-        config["experiment"]["serverMigrationPort"].asInt(),
-        true);
   } else if (protocolField == "poolOfAddresses") {
     migrationProtocol_ = ServerMigrationProtocol::POOL_OF_ADDRESSES;
   } else if (protocolField == "symmetric") {
@@ -51,6 +47,11 @@ ExperimentManager::ExperimentManager(const folly::dynamic &config,
     throw std::invalid_argument("Bad protocol");
   }
 
+  migrationAddress_ = folly::SocketAddress(
+      config["experiment"]["serverMigrationHost"].asString(),
+      config["experiment"]["serverMigrationPort"].asInt(),
+      true);
+
   socket_ = std::make_unique<folly::AsyncUDPSocket>(evb);
   if (serverManagementAddress_.getFamily() == AF_INET) {
     socket_->bind(folly::SocketAddress("0.0.0.0", 0));
@@ -59,8 +60,6 @@ ExperimentManager::ExperimentManager(const folly::dynamic &config,
   }
   socket_->setErrMessageCallback(this);
 
-  auto migrationAddressString =
-      migrationAddress_.has_value() ? migrationAddress_->describe() : "none";
   VLOG(1) << fmt::format(
       "Initialized experiment manager with experiment ID={}, "
       "server management address={}, container migration script address={}, "
@@ -69,7 +68,7 @@ ExperimentManager::ExperimentManager(const folly::dynamic &config,
       serverManagementAddress_.describe(),
       containerMigrationScriptAddress_.describe(),
       serverMigrationProtocolToString(migrationProtocol_),
-      migrationAddressString);
+      migrationAddress_.describe());
 }
 
 void ExperimentManager::start() {
@@ -106,8 +105,8 @@ void ExperimentManager::notifyImminentServerMigration() {
   command.action =
       MigrationManagementInterface::Action::ON_IMMINENT_SERVER_MIGRATION;
   command.protocol = migrationProtocol_;
-  if (migrationAddress_) {
-    command.address = migrationAddress_.value();
+  if (migrationProtocol_ == ServerMigrationProtocol::EXPLICIT) {
+    command.address = migrationAddress_;
   }
 
   auto jsonCommand = managementCommandToJsonString(command);
@@ -205,6 +204,7 @@ bool ExperimentManager::maybeTriggerServerMigration(
     case ExperimentId::TWO:
       if (numberOfCompletedRequests == triggerMigrationAfterRequest_) {
         triggerServerMigration(true);
+        migrationTriggered_ = true;
         return proactiveExplicit_;
       }
       return false;
@@ -219,8 +219,7 @@ bool ExperimentManager::maybeTriggerServerMigration(
 }
 
 bool ExperimentManager::maybeStopExperiment(
-    const int64_t &numberOfCompletedRequests,
-    const folly::IPAddress &currentPeerAddress) {
+    const int64_t &numberOfCompletedRequests) {
   switch (experimentId_) {
     case ExperimentId::QUIC_BASELINE:
       if (numberOfCompletedRequests == shutdownAfterRequest_) {
@@ -230,17 +229,18 @@ bool ExperimentManager::maybeStopExperiment(
       return false;
     case ExperimentId::ONE:
       if (numberOfCompletedRequests == shutdownAfterRequest_) {
-        auto currentManagementAddress = folly::SocketAddress(
-            currentPeerAddress, serverManagementAddress_.getPort());
-        if (currentManagementAddress != serverManagementAddress_) {
+        auto managementAddressAfterMigration =
+            folly::SocketAddress(migrationAddress_.getIPAddress(),
+                                 serverManagementAddress_.getPort());
+        if (serverManagementAddress_ != managementAddressAfterMigration) {
           // The path validation was not completed, so manually update the
           // management address before sending the shutdown command.
           VLOG(1) << fmt::format(
               "Shutdown before completing the path validation. "
               "Updating the management address from {} to {}",
               serverManagementAddress_.describe(),
-              currentManagementAddress.describe());
-          serverManagementAddress_ = currentManagementAddress;
+              managementAddressAfterMigration.describe());
+          serverManagementAddress_ = managementAddressAfterMigration;
         }
         stopExperiment(true);
         return true;
@@ -250,17 +250,18 @@ bool ExperimentManager::maybeStopExperiment(
       if (firstResponseFromNewServerAddressReceived_) {
         --secondExpResponsesFromNewServerAddressBeforeShutdown_;
         if (secondExpResponsesFromNewServerAddressBeforeShutdown_ <= 0) {
-          auto currentManagementAddress = folly::SocketAddress(
-              currentPeerAddress, serverManagementAddress_.getPort());
-          if (currentManagementAddress != serverManagementAddress_) {
+          auto managementAddressAfterMigration =
+              folly::SocketAddress(migrationAddress_.getIPAddress(),
+                                   serverManagementAddress_.getPort());
+          if (serverManagementAddress_ != managementAddressAfterMigration) {
             // The path validation was not completed, so manually update the
             // management address before sending the shutdown command.
             VLOG(1) << fmt::format(
                 "Shutdown before completing the path validation. "
                 "Updating the management address from {} to {}",
                 serverManagementAddress_.describe(),
-                currentManagementAddress.describe());
-            serverManagementAddress_ = currentManagementAddress;
+                managementAddressAfterMigration.describe());
+            serverManagementAddress_ = managementAddressAfterMigration;
           }
           stopExperiment(true);
           return true;
@@ -297,26 +298,28 @@ bool ExperimentManager::maybeStopExperiment(
   folly::assume_unreachable();
 }
 
-void ExperimentManager::stopExperimentDueToTimeout(
-    const folly::IPAddress &currentPeerAddress) {
+void ExperimentManager::stopExperimentDueToTimeout() {
   switch (experimentId_) {
     case ExperimentId::QUIC_BASELINE:
       stopExperiment(false);
       return;
     case ExperimentId::ONE:
     case ExperimentId::TWO: {
-      auto currentManagementAddress = folly::SocketAddress(
-          currentPeerAddress, serverManagementAddress_.getPort());
-      if (currentManagementAddress != serverManagementAddress_) {
-        // The timeout happened before the path validation completion,
-        // so manually update the management address before sending
-        // the shutdown command.
-        VLOG(1) << fmt::format(
-            "Timeout happened before completing the path validation. "
-            "Updating the management address from {} to {}",
-            serverManagementAddress_.describe(),
-            currentManagementAddress.describe());
-        serverManagementAddress_ = currentManagementAddress;
+      if (migrationTriggered_) {
+        auto managementAddressAfterMigration =
+            folly::SocketAddress(migrationAddress_.getIPAddress(),
+                                 serverManagementAddress_.getPort());
+        if (serverManagementAddress_ != managementAddressAfterMigration) {
+          // The timeout happened before the path validation completion,
+          // so manually update the management address before sending
+          // the shutdown command.
+          VLOG(1) << fmt::format(
+              "Timeout happened before completing the path validation. "
+              "Updating the management address from {} to {}",
+              serverManagementAddress_.describe(),
+              managementAddressAfterMigration.describe());
+          serverManagementAddress_ = managementAddressAfterMigration;
+        }
       }
       stopExperiment(true);
       return;
