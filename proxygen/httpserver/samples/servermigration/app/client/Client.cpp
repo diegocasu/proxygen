@@ -352,8 +352,9 @@ void Client::scheduleRequests() {
     triggerPTO = experimentManager_->maybeTriggerServerMigration(
         numberOfCompletedRequests);
     maybeUpdateServerManagementAddress();
-    auto stop =
-        experimentManager_->maybeStopExperiment(numberOfCompletedRequests);
+    auto stop = experimentManager_->maybeStopExperiment(
+        numberOfCompletedRequests,
+        quicClient_->getPeerAddress().getIPAddress());
     if (stop) {
       experimentManager_->dumpServiceTimesToFile();
       break;

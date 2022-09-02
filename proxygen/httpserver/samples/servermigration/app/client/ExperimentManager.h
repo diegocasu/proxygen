@@ -30,7 +30,8 @@ class ExperimentManager
    */
   bool maybeTriggerServerMigration(const int64_t& numberOfCompletedRequests);
 
-  bool maybeStopExperiment(const int64_t& numberOfCompletedRequests);
+  bool maybeStopExperiment(const int64_t& numberOfCompletedRequests,
+                           const folly::IPAddress& currentPeerAddress);
   void maybeSaveServiceTime(const int64_t& requestNumber,
                             const long& requestTimestamp,
                             const proxygen::HTTPMethod& requestMethod,

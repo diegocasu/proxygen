@@ -219,7 +219,8 @@ bool ExperimentManager::maybeTriggerServerMigration(
 }
 
 bool ExperimentManager::maybeStopExperiment(
-    const int64_t &numberOfCompletedRequests) {
+    const int64_t &numberOfCompletedRequests,
+    const folly::IPAddress &currentPeerAddress) {
   switch (experimentId_) {
     case ExperimentId::QUIC_BASELINE:
       if (numberOfCompletedRequests == shutdownAfterRequest_) {
@@ -229,6 +230,18 @@ bool ExperimentManager::maybeStopExperiment(
       return false;
     case ExperimentId::ONE:
       if (numberOfCompletedRequests == shutdownAfterRequest_) {
+        auto currentManagementAddress = folly::SocketAddress(
+            currentPeerAddress, serverManagementAddress_.getPort());
+        if (currentManagementAddress != serverManagementAddress_) {
+          // The path validation was not completed, so manually update the
+          // management address before sending the shutdown command.
+          VLOG(1) << fmt::format(
+              "Shutdown before completing the path validation. "
+              "Updating the management address from {} to {}",
+              serverManagementAddress_.describe(),
+              currentManagementAddress.describe());
+          serverManagementAddress_ = currentManagementAddress;
+        }
         stopExperiment(true);
         return true;
       }
@@ -237,6 +250,18 @@ bool ExperimentManager::maybeStopExperiment(
       if (firstResponseFromNewServerAddressReceived_) {
         --secondExpResponsesFromNewServerAddressBeforeShutdown_;
         if (secondExpResponsesFromNewServerAddressBeforeShutdown_ <= 0) {
+          auto currentManagementAddress = folly::SocketAddress(
+              currentPeerAddress, serverManagementAddress_.getPort());
+          if (currentManagementAddress != serverManagementAddress_) {
+            // The path validation was not completed, so manually update the
+            // management address before sending the shutdown command.
+            VLOG(1) << fmt::format(
+                "Shutdown before completing the path validation. "
+                "Updating the management address from {} to {}",
+                serverManagementAddress_.describe(),
+                currentManagementAddress.describe());
+            serverManagementAddress_ = currentManagementAddress;
+          }
           stopExperiment(true);
           return true;
         }
