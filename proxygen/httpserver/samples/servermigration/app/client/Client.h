@@ -20,6 +20,7 @@ namespace quic::samples::servermigration {
 class Client
     : public proxygen::HQSession::ConnectCallback
     , public quic::ServerMigrationEventCallback
+    , public proxygen::HTTPSessionBase::InfoCallback
     , public std::enable_shared_from_this<Client> {
  public:
   explicit Client(const folly::dynamic& config);
@@ -40,6 +41,9 @@ class Client
       folly::SocketAddress address) noexcept override;
   void onServerMigrationCompleted() noexcept override;
 
+  // HTTPSessionBase::InfoCallback methods.
+  void onDestroy(const proxygen::HTTPSessionBase& base) override;
+
  private:
   struct Seeds {
     int64_t master;
@@ -58,6 +62,7 @@ class Client
   void scheduleRequests();
   bool maybeUpdateServerManagementAddress();
   std::size_t getAndPrintReceivedResponse();
+  bool isSessionClosed();
 
   std::string serverHost_;
   uint16_t serverPort_;
@@ -80,6 +85,11 @@ class Client
   // manager must be updated.
   std::mutex serverMigrationCompletedMutex_;
   folly::Optional<folly::IPAddress> newServerAddress_;
+
+  // Attributes used to check if the HTTP session was closed due to an error.
+  // Useful to avoid crashing the program before creating a new transaction.
+  std::mutex sessionClosedMutex_;
+  bool sessionClosed_{false};
 };
 
 } // namespace quic::samples::servermigration

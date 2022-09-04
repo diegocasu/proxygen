@@ -229,11 +229,8 @@ Client::Client(const folly::dynamic& config)
     quicClient_->setSupportedVersions(supportedVersions);
 
     wangle::TransportInfo transportInfo;
-    session_ = new proxygen::HQUpstreamSession(transactionsTimeout_,
-                                               connectionTimeout_,
-                                               nullptr,
-                                               transportInfo,
-                                               nullptr);
+    session_ = new proxygen::HQUpstreamSession(
+        transactionsTimeout_, connectionTimeout_, nullptr, transportInfo, this);
     session_->setForceUpstream1_1(false);
     session_->setSocket(quicClient_);
     session_->setConnectCallback(this);
@@ -290,6 +287,14 @@ void Client::scheduleRequests() {
     std::size_t requestBodySize = 0;
     if (request.body) {
       requestBodySize = request.body->length();
+    }
+
+    // Check if session was closed before attempting to create a transaction.
+    if (isSessionClosed()) {
+      LOG(ERROR) << "Session closed due to an error: handling it like "
+                    "a timeout. Stopping the client.";
+      experimentManager_->stopExperimentDueToTimeout();
+      break;
     }
 
     evb->runInEventBaseThreadAndWait([&] {
@@ -422,6 +427,17 @@ bool Client::maybeUpdateServerManagementAddress() {
   experimentManager_->updateServerManagementAddress(newServerAddress_.value());
   newServerAddress_.clear();
   return true;
+}
+
+void Client::onDestroy(const proxygen::HTTPSessionBase& base) {
+  LOG(INFO) << "HTTP session is being destroyed. Setting session closed flag";
+  std::lock_guard<std::mutex> guard(sessionClosedMutex_);
+  sessionClosed_ = true;
+}
+
+bool Client::isSessionClosed() {
+  std::lock_guard<std::mutex> guard(sessionClosedMutex_);
+  return sessionClosed_;
 }
 
 } // namespace quic::samples::servermigration
