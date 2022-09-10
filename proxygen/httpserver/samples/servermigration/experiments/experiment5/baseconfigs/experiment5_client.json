@@ -1,5 +1,5 @@
 {
-  "serverHost": "192.168.1.104",
+  "serverHost": "192.168.2.1",
   "serverPort": 6666,
   "serverMigration": {
     "enable": true,
@@ -18,13 +18,13 @@
     "backToBack": false
   },
   "requestBody": {
-    "fixed": false,
-    "fromDistribution": true
+    "fixed": true,
+    "fromDistribution": false
   },
   "seed": 1,
   "experiment": {
     "id": 5,
-    "serverMigrationProtocol": "proactiveExplicit",
+    "serverMigrationProtocol": "reactiveExplicit",
 
     "serverManagementPort": 7777,
     "containerMigrationScriptHost": "0.0.0.0",

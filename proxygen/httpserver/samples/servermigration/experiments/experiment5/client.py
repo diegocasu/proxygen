@@ -3,6 +3,7 @@ import argparse
 import socket
 import pandas as pd
 import json
+import select
 
 from utils.configuration import *
 from utils.docker import *
@@ -46,11 +47,16 @@ def parse_arguments():
                         action="store_true", default=False)
     parser.add_argument("--server_app_port", dest="server_app_port",
                         action="store", type=int, required=True)
-    parser.add_argument("--management_port", dest="management_port",
-                        action="store", type=int, required=True)
-    parser.add_argument("--first_server_ip", dest="first_server_ip",
+    parser.add_argument("--server_management_port",
+                        dest="server_management_port", action="store",
+                        type=int, required=True)
+    parser.add_argument("--first_server_ip_eth", dest="first_server_ip_eth",
                         action="store", type=str, required=True)
-    parser.add_argument("--second_server_ip", dest="second_server_ip",
+    parser.add_argument("--second_server_ip_eth", dest="second_server_ip_eth",
+                        action="store", type=str, required=True)
+    parser.add_argument("--first_server_ip_wifi", dest="first_server_ip_wifi",
+                        action="store", type=str, required=True)
+    parser.add_argument("--second_server_ip_wifi", dest="second_server_ip_wifi",
                         action="store", type=str, required=True)
     parser.add_argument("--repetitions", dest="repetitions", action="store",
                         type=int, required=True)
@@ -82,42 +88,71 @@ def update_configuration_file(container_name, config_name,
                              app_config_container_path)
 
 
-def notify_imminent_server_migration(server_ip, destination_address,
-                                     management_port, quic_protocol):
+def notify_imminent_server_migration(migration_notification_socket,
+                                     server_management_ip, management_port,
+                                     destination_address, quic_protocol,
+                                     response_timeout):
     if "Explicit" in quic_protocol:
         command = json.dumps({"action": "onImminentServerMigration",
                               "protocol": "Explicit",
-                              "address": destination_address})
+                              "address": destination_address,
+                              "notifyMigrationReady": True})
     elif quic_protocol == "poolOfAddresses":
         command = json.dumps({"action": "onImminentServerMigration",
-                              "protocol": "Pool of Addresses"})
+                              "protocol": "Pool of Addresses",
+                              "notifyMigrationReady": True})
     elif quic_protocol == "symmetric":
         command = json.dumps({"action": "onImminentServerMigration",
-                              "protocol": "Symmetric"})
+                              "protocol": "Symmetric",
+                              "notifyMigrationReady": True})
     elif quic_protocol == "synchronizedSymmetric":
         command = json.dumps({"action": "onImminentServerMigration",
-                              "protocol": "Synchronized Symmetric"})
+                              "protocol": "Synchronized Symmetric",
+                              "notifyMigrationReady": True})
     else:
         raise RuntimeError("Invalid QUIC migration protocol")
 
-    logger.info("Notifying imminent server migration sending command {} "
-                "to {}:{}".format(command, server_ip, management_port))
-    sock = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
-    sock.sendto(command.encode(), (server_ip, management_port))
+    logger.info("Notifying imminent server migration sending command '{}' "
+                "to {}:{}".format(command, server_management_ip,
+                                  management_port))
+    migration_notification_socket.sendto(
+        command.encode(), (server_management_ip, management_port))
 
     logger.info("Waiting for the response")
     while True:
-        message, address = sock.recvfrom(1024)
+        input_ready, _, _ = select.select(
+            [migration_notification_socket], [], [], response_timeout)
+        if not input_ready:
+            return False
+
+        message, address = migration_notification_socket.recvfrom(1024)
         message = message.decode()
         logger.info("Received message '{}' from {}:{}"
                     .format(message, *address))
         if message == "OK":
-            return
+            return True
+
+
+def wait_for_migration_ready_notification(migration_notification_socket,
+                                          response_timeout):
+    logger.info("Waiting for the server to be ready for migration")
+    while True:
+        input_ready, _, _ = select.select(
+            [migration_notification_socket], [], [], response_timeout)
+        if not input_ready:
+            return False
+
+        message, address = migration_notification_socket.recvfrom(1024)
+        message = message.decode()
+        logger.info("Received message '{}' from {}:{}"
+                    .format(message, *address))
+        if message == "migration ready":
+            return True
 
 
 def trigger_server_migration(container_migration_script_ip):
     command = "migrate"
-    logger.info("Triggering server migration sending command {} to {}:{}"
+    logger.info("Triggering server migration sending command '{}' to {}:{}"
                 .format(command, container_migration_script_ip, 19888))
     sock = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
     sock.sendto(command.encode(), (container_migration_script_ip, 19888))
@@ -154,26 +189,38 @@ def send_shutdown(address, port, tcp_socket=False):
     sock.send(command.encode())
 
 
-def migrate_periodically_and_shutdown(session_duration, migration_frequency,
-                                      first_server_ip, second_server_ip,
-                                      server_app_port, server_management_port,
-                                      quic_protocol, container_name):
+def migrate_periodically_and_shutdown(
+        session_duration, migration_frequency, first_server_ip_eth,
+        second_server_ip_eth, first_server_ip_wifi, second_server_ip_wifi,
+        server_app_port, server_management_port, quic_protocol, container_name):
     handover_timestamp_list = []
     migration_notification_timestamp_list = []
     migration_trigger_timestamp_list = []
     n_migrations = int(session_duration / migration_frequency)
     early_exit = False
 
-    server_app_current_ip = first_server_ip
-    server_source_current_ip = first_server_ip
-    server_destination_current_ip = second_server_ip
+    server_management_current_ip = first_server_ip_eth
+    server_script_source_current_ip = first_server_ip_eth
+    server_script_destination_current_ip = second_server_ip_eth
 
-    wait_time_after_each_migration = 180
-    wait_time_after_migration_notification = 10
+    server_app_source_current_ip = first_server_ip_wifi
+    server_app_destination_current_ip = second_server_ip_wifi
+
+    migration_notification_socket = \
+        socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
+    migration_notification_timeout = 180
     wait_time_before_ending_experiment = 300
 
     for i in range(0, n_migrations):
         time.sleep(migration_frequency * 60)  # Frequency in seconds.
+
+        # Check if client container is still running.
+        state = get_docker_container_state(container_name)
+        if state == DockerContainerState.EXITED \
+                or state == DockerContainerState.PAUSED:
+            logger.error("Client application timed out. Stopping the run")
+            early_exit = True
+            break
 
         # Perform handover.
         handover_timestamp = time.time()
@@ -185,64 +232,55 @@ def migrate_periodically_and_shutdown(session_duration, migration_frequency,
             early_exit = True
             break
 
-        # Wait for some minutes before triggering server migration and check if
-        # the client container is still up and running. Due to packet loss,
-        # client migration could fail (loss of path validation frames, which
-        # are not retransmitted in mvfst).
-        time.sleep(wait_time_after_each_migration)
-        state = get_docker_container_state(container_name)
-        if state == DockerContainerState.EXITED \
-                or state == DockerContainerState.PAUSED:
-            logger.error("Client application timed out after client handover. "
-                         "Stopping run")
+        # Notify imminent server migration.
+        destination_address = "{}:{}".format(server_app_destination_current_ip,
+                                             server_app_port)
+        notification_timestamp = time.time()
+        success = notify_imminent_server_migration(
+            migration_notification_socket, server_management_current_ip,
+            server_management_port, destination_address, quic_protocol,
+            migration_notification_timeout)
+        if not success:
+            logger.error("Timeout while sending the imminent migration "
+                         "notification. Stopping the run")
             early_exit = True
             break
 
-        # Notify imminent server migration.
-        destination_address = "{}:{}".format(server_destination_current_ip,
-                                             server_app_port)
-        notification_timestamp = time.time()
-        notify_imminent_server_migration(server_app_current_ip,
-                                         destination_address,
-                                         server_management_port,
-                                         quic_protocol)
+        # Wait for the server to be ready and send the migration trigger.
+        ready = wait_for_migration_ready_notification(
+            migration_notification_socket, migration_notification_timeout)
+        if not ready:
+            logger.error("Timeout while waiting for the server to "
+                         "prepare for migration. Stopping the run")
+            early_exit = True
+            break
 
-        # Sleep for some seconds and send the migration trigger.
-        time.sleep(wait_time_after_migration_notification)
         trigger_timestamp = time.time()
-        trigger_server_migration(server_source_current_ip)
+        trigger_server_migration(server_script_source_current_ip)
 
         # Update variables for next migrations.
-        previous_source_ip = server_source_current_ip
-        server_source_current_ip = server_destination_current_ip
-        server_app_current_ip = server_destination_current_ip
-        server_destination_current_ip = previous_source_ip
+        previous_script_source_ip = server_script_source_current_ip
+        server_script_source_current_ip = server_script_destination_current_ip
+        server_management_current_ip = server_script_destination_current_ip
+        server_script_destination_current_ip = previous_script_source_ip
+
+        previous_app_source_ip = server_app_source_current_ip
+        server_app_source_current_ip = server_app_destination_current_ip
+        server_app_destination_current_ip = previous_app_source_ip
 
         migration_notification_timestamp_list.append(notification_timestamp)
         migration_trigger_timestamp_list.append(trigger_timestamp)
 
-        # After a couple of minutes, and if this is not the last migration,
-        # check if the server migration succeeded or not (again, due to packet
-        # loss, the path validation could fail).
-        if i != n_migrations - 1:
-            time.sleep(wait_time_after_each_migration)
-            state = get_docker_container_state(container_name)
-            if state == DockerContainerState.EXITED \
-                    or state == DockerContainerState.PAUSED:
-                logger.error("Client application timed out after "
-                             "server migration. Stopping run")
-                early_exit = True
-                break
-
     if not early_exit:
         # Wait for 5 minutes and end the experiment.
         time.sleep(wait_time_before_ending_experiment)
-        send_shutdown(server_app_current_ip, server_management_port)
-        send_shutdown(server_destination_current_ip, 19888)
+        send_shutdown(server_management_current_ip, server_management_port)
+        send_shutdown(server_script_destination_current_ip, 19888)
     else:
-        send_shutdown(server_app_current_ip, server_management_port)
-        send_shutdown(server_source_current_ip, 19888)
-        send_shutdown(server_destination_current_ip, 18863, tcp_socket=True)
+        send_shutdown(server_management_current_ip, server_management_port)
+        send_shutdown(server_script_source_current_ip, 19888)
+        send_shutdown(server_script_destination_current_ip, 18863,
+                      tcp_socket=True)
 
     return handover_timestamp_list, migration_notification_timestamp_list, \
            migration_trigger_timestamp_list
@@ -360,9 +398,10 @@ def main():
                     container_name, logs_destination_path,
                     config_file, service_times_file)
 
-                send_shutdown(args.first_server_ip, args.management_port)
-                send_shutdown(args.first_server_ip, 19888)
-                send_shutdown(args.second_server_ip, 18863, tcp_socket=True)
+                send_shutdown(args.first_server_ip_eth,
+                              args.server_management_port)
+                send_shutdown(args.first_server_ip_eth, 19888)
+                send_shutdown(args.second_server_ip_eth, 18863, tcp_socket=True)
                 logger.info("Sleeping for 10 seconds before the next run")
                 time.sleep(10)
                 continue
@@ -379,8 +418,9 @@ def main():
             migration_trigger_timestamps = \
                 migrate_periodically_and_shutdown(
                     session_duration, migration_frequency,
-                    args.first_server_ip, args.second_server_ip,
-                    args.server_app_port, args.management_port,
+                    args.first_server_ip_eth, args.second_server_ip_eth,
+                    args.first_server_ip_wifi, args.second_server_ip_wifi,
+                    args.server_app_port, args.server_management_port,
                     config["experiment"]["serverMigrationProtocol"],
                     container_name)
 
