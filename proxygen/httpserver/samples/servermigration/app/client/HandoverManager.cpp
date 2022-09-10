@@ -67,12 +67,19 @@ void HandoverManager::onDataAvailable(
       newAddress.setFromLocalIpPort(dynamic["address"].asString());
 
       auto accessPoint = dynamic["accessPoint"].asString();
-      auto accessPointRouter = dynamic["accessPointRouter"].asString();
+      auto accessPointGateway = dynamic["accessPointGateway"].asString();
       auto otherAccessPointSubnet =
           dynamic["otherAccessPointSubnet"].asString();
+      auto tcScriptPath = dynamic["tcScript"].asString();
 
-      doHandover(
-          newAddress, accessPoint, accessPointRouter, otherAccessPointSubnet);
+      auto success = doHandover(newAddress,
+                                accessPoint,
+                                accessPointGateway,
+                                otherAccessPointSubnet,
+                                tcScriptPath);
+
+      std::string response = success ? "OK" : "Error: cannot perform handover";
+      socket_->write(client, folly::IOBuf::copyBuffer(response));
     }
   } catch (const std::exception &exception) {
     LOG(ERROR) << "Ignoring command: " << exception.what();
@@ -91,10 +98,11 @@ bool HandoverManager::searchInOutputFile(const std::string &fileName,
   return found != std::string::npos;
 }
 
-void HandoverManager::doHandover(const folly::SocketAddress &newAddress,
+bool HandoverManager::doHandover(const folly::SocketAddress &newAddress,
                                  const std::string &accessPoint,
-                                 const std::string &accessPointRouter,
-                                 const std::string &otherAccessPointSubnet) {
+                                 const std::string &accessPointGateway,
+                                 const std::string &otherAccessPointSubnet,
+                                 const std::string &tcScriptPath) {
   transportEvb_->runInEventBaseThreadAndWait([&] {
     std::string cmdOutputFile("cmdOutput.txt");
     std::chrono::milliseconds waitInterval(1000);
@@ -115,7 +123,7 @@ void HandoverManager::doHandover(const folly::SocketAddress &newAddress,
             "Failed handover attempt {}/{}", attempts, maxAttempts);
         if (attempts >= maxAttempts) {
           LOG(ERROR) << "Handover failed";
-          return;
+          return false;
         }
         continue;
       }
@@ -128,7 +136,7 @@ void HandoverManager::doHandover(const folly::SocketAddress &newAddress,
     auto cmdRoute =
         fmt::format("sudo ip route add {} via {} 2>&1 | sudo tee {}",
                     otherAccessPointSubnet,
-                    accessPointRouter,
+                    accessPointGateway,
                     cmdOutputFile);
     while (true) {
       LOG(INFO) << fmt::format("Running command '{}'", cmdRoute);
@@ -139,7 +147,7 @@ void HandoverManager::doHandover(const folly::SocketAddress &newAddress,
             "Failed routing table update {}/{}", attempts, maxAttempts);
         if (attempts >= maxAttempts) {
           LOG(ERROR) << "Routing table update failed";
-          return;
+          return false;
         }
         continue;
       }
@@ -148,12 +156,18 @@ void HandoverManager::doHandover(const folly::SocketAddress &newAddress,
       break;
     }
 
+    // Run tc scripts.
+    auto cmdTc = fmt::format("sudo bash {}", tcScriptPath);
+    LOG(INFO) << fmt::format("Running command '{}'", cmdRoute);
+    std::system(cmdTc.data());
+
     // Update client socket to reflect the new address.
     auto newClientSocket =
         std::make_unique<folly::AsyncUDPSocket>(transportEvb_);
     newClientSocket->bind(newAddress);
     quicClient_->onNetworkSwitch(std::move(newClientSocket));
   });
+  return true;
 }
 
 } // namespace quic::samples::servermigration

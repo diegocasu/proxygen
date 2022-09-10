@@ -30,10 +30,11 @@ class HandoverManager
 
  private:
   bool searchInOutputFile(const std::string& fileName, const std::string& str);
-  void doHandover(const folly::SocketAddress& newAddress,
+  bool doHandover(const folly::SocketAddress& newAddress,
                   const std::string& accessPoint,
-                  const std::string& accessPointRouter,
-                  const std::string& otherAccessPointSubnet);
+                  const std::string& accessPointGateway,
+                  const std::string& otherAccessPointSubnet,
+                  const std::string& tcScriptPath);
 
   folly::EventBase* transportEvb_;
   std::shared_ptr<QuicClientTransport> quicClient_;
