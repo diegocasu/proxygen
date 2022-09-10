@@ -40,6 +40,7 @@ class ExperimentManager
                             const folly::SocketAddress& serverAddress);
   void stopExperimentDueToTimeout();
   void dumpServiceTimesToFile();
+  bool maybeCreateHandoverManager();
 
   /**
    * Updates the server management address after a server migration.

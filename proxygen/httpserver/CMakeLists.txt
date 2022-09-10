@@ -172,6 +172,7 @@ if (BUILD_QUIC AND BUILD_SAMPLES)
       samples/servermigration/app/client/Curl.cpp
       samples/servermigration/app/client/RequestScheduler.cpp
       samples/servermigration/app/client/ExperimentManager.cpp
+      samples/servermigration/app/client/HandoverManager.cpp
   )
   target_compile_options(
       mhq

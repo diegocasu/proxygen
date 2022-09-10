@@ -4,6 +4,7 @@
 #include <folly/io/async/ScopedEventBaseThread.h>
 #include <proxygen/httpserver/samples/servermigration/app/client/Curl.h>
 #include <proxygen/httpserver/samples/servermigration/app/client/ExperimentManager.h>
+#include <proxygen/httpserver/samples/servermigration/app/client/HandoverManager.h>
 #include <proxygen/httpserver/samples/servermigration/app/client/RequestScheduler.h>
 #include <proxygen/lib/http/session/HQUpstreamSession.h>
 #include <quic/client/QuicClientTransport.h>
@@ -90,6 +91,10 @@ class Client
   // Useful to avoid crashing the program before creating a new transaction.
   std::mutex sessionClosedMutex_;
   bool sessionClosed_{false};
+
+  // Object used to change the transport socket
+  // without errors during the client handovers.
+  std::unique_ptr<HandoverManager> handoverManager_;
 };
 
 } // namespace quic::samples::servermigration

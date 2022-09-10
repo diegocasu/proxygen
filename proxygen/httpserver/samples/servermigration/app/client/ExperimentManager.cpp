@@ -538,4 +538,9 @@ void ExperimentManager::onDataAvailable(
   responseBaton_.post();
 }
 
+bool ExperimentManager::maybeCreateHandoverManager() {
+  return experimentId_ == ExperimentId::FIVE ||
+         experimentId_ == ExperimentId::CLIENT_MIGRATION_BASELINE;
+}
+
 } // namespace quic::samples::servermigration

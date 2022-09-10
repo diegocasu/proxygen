@@ -235,6 +235,10 @@ Client::Client(const folly::dynamic& config)
     session_->setSocket(quicClient_);
     session_->setConnectCallback(this);
   });
+
+  if (experimentManager_->maybeCreateHandoverManager()) {
+    handoverManager_ = std::make_unique<HandoverManager>(evb, quicClient_);
+  }
 }
 
 void Client::start() {
@@ -247,6 +251,10 @@ void Client::start() {
     session_->startNow();
     quicClient_->start(session_, session_);
   });
+
+  if (handoverManager_) {
+    handoverManager_->start();
+  }
 
   startDone_.wait();
   if (connectionFailed_) {
