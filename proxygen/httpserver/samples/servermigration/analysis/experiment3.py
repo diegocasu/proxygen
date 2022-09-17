@@ -30,7 +30,7 @@ def preprocess_dataset(dataset):
 
 
 def figure_save_path():
-    return "plots/exp3_migration_notification_times_{}.png" \
+    return "plots/exp3_migration_notification_times_{}.pdf" \
         .format(str(time.time()))
 
 
@@ -46,7 +46,8 @@ def plot_migration_notification_times(dataset, title):
     ax.set_xlabel("Number of clients", fontsize=20, labelpad=30)
     ax.set_ylabel("Migration notification time [ms]", fontsize=20,
                   labelpad=30)
-    ax.set_xticklabels(ax.get_xmajorticklabels(), fontsize=14)
+    ax.tick_params(axis="both", which="major", labelsize=14)
+    ax.tick_params(axis="both", which="minor", labelsize=14)
     ax.set_title(title, fontsize=20)
 
     patches, _ = ax.get_legend_handles_labels()
@@ -54,7 +55,7 @@ def plot_migration_notification_times(dataset, title):
               labels=["With SERVER_MIGRATION frame",
                       "Without SERVER_MIGRATION frame"])
     plt.yticks(np.arange(0, 210, 10))
-    plt.savefig(figure_save_path(), format="png", dpi=300, bbox_inches="tight")
+    plt.savefig(figure_save_path(), format="pdf", dpi=300, bbox_inches="tight")
     plt.show()
 
 
@@ -76,7 +77,8 @@ def plot_migration_notification_times_together(dataset_18, dataset_122):
     ax.set_xlabel("Number of clients", fontsize=20, labelpad=30)
     ax.set_ylabel("Migration notification time [ms]", fontsize=20,
                   labelpad=30)
-    ax.set_xticklabels(ax.get_xmajorticklabels(), fontsize=14)
+    ax.tick_params(axis="both", which="major", labelsize=14)
+    ax.tick_params(axis="both", which="minor", labelsize=14)
 
     patches, _ = ax.get_legend_handles_labels()
     ax.legend(handles=patches, loc="upper center", fontsize=15,
@@ -87,7 +89,7 @@ def plot_migration_notification_times_together(dataset_18, dataset_122):
               framealpha=1, bbox_to_anchor=(0.5, 1.05), ncol=2)
 
     plt.yticks(np.arange(0, 210, 10))
-    plt.savefig(figure_save_path(), format="png", dpi=300, bbox_inches="tight")
+    plt.savefig(figure_save_path(), format="pdf", dpi=300, bbox_inches="tight")
     plt.show()
 
 

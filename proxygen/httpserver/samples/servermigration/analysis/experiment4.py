@@ -6,11 +6,24 @@ import seaborn as sns
 import matplotlib.pyplot as plt
 
 
+def load_dataset_from_pickle_or_csv(paths):
+    try:
+        dataset = pd.read_pickle(paths["convertedDataset"])
+        return dataset
+    except:
+        dataset = parse_dataset(paths)
+        dataset.to_pickle(paths["convertedDataset"])
+        return dataset
+
+
 def parse_dataset(dataset_paths):
     service_times = pd.read_csv(dataset_paths["serviceTimes"], converters={
         "requestTimestamps [us]": pd.eval,
         "serviceTimes [us]": pd.eval,
-        "serverAddresses": pd.eval})
+        "serverAddresses": pd.eval,
+        "requestMethods": pd.eval,
+        "requestBodySizes [B]": pd.eval,
+        "responseBodySizes [B]": pd.eval})
     migration_times = pd.read_csv(dataset_paths["migrationTimes"])
     restore_times = pd.read_csv(dataset_paths["restoreTimes"], converters={
         "restoreTime [s]": pd.eval})
@@ -106,16 +119,15 @@ def preprocess_dataset(dataset, n_clients):
 
     # Save in a separate column the first request timestamp for each row.
     # This will be useful afterwards to shift timestamps.
-    # preprocessed_dataset["firstRequestTimestampOfSession [s]"] = \
-    #     preprocessed_dataset.apply(
-    #         lambda row: row["requestTimestamps [us]"][0] / 1000000, axis=1)
     preprocessed_dataset["firstRequestTimestampOfSession [s]"] = \
         preprocessed_dataset.apply(lambda row: first_session_timestamp(row),
                                    axis=1)
 
     # List all the requests in separate rows.
     preprocessed_dataset = preprocessed_dataset.explode(
-        ["requestTimestamps [us]", "serviceTimes [us]", "serverAddresses"],
+        ["requestTimestamps [us]", "serviceTimes [us]",
+         "serverAddresses", "requestMethods",
+         "requestBodySizes [B]", "responseBodySizes [B]"],
         ignore_index=True)
 
     # Add request number to each row.
@@ -146,11 +158,21 @@ def preprocess_dataset(dataset, n_clients):
     preprocessed_dataset["serviceTimes [s]"] = \
         preprocessed_dataset["serviceTimes [ms]"] / 1000
 
+    # Convert request/response byte size to megabytes.
+    preprocessed_dataset["requestBodySizes [MB]"] = \
+        preprocessed_dataset["requestBodySizes [B]"] / (1024 * 1024)
+    preprocessed_dataset["responseBodySizes [MB]"] = \
+        preprocessed_dataset["responseBodySizes [B]"] / (1024 * 1024)
+
     return preprocessed_dataset
 
 
 def service_times_figure_save_path():
-    return "plots/exp4_service_times_{}.png".format(str(time.time()))
+    return "plots/exp4_service_times_{}.pdf".format(str(time.time()))
+
+
+def request_response_size_save_path():
+    return "plots/exp4_req_resp_size_{}.pdf".format(str(time.time()))
 
 
 def adjust_y_margin(ax, loss, protocol, interval, technique):
@@ -169,22 +191,7 @@ def adjust_y_margin(ax, loss, protocol, interval, technique):
         return
 
     if protocol == "Pool of Addresses (3)":
-        if technique == "Cold":
-            ax.set_ymargin(0.002)
-        elif technique == "Pre-copy":
-            ax.set_ymargin(0.001)
-        elif technique == "Post-copy" and interval == 0:
-            ax.set_ymargin(0.002)
-        elif technique == "Post-copy" and interval == 260:
-            ax.set_ymargin(0.003)
-        elif technique == "Post-copy" and interval == 1000:
-            ax.set_ymargin(0.001)
-        elif technique == "Hybrid" and (interval == 0 or interval == 260):
-            ax.set_ymargin(0.001)
-        elif technique == "Hybrid" and interval == 1000:
-            ax.set_ymargin(0.004)
-        else:
-            ax.set_ymargin(0.007)
+        ax.set_ymargin(0.001)
         return
 
     if protocol == "Symmetric":
@@ -202,12 +209,12 @@ def adjust_y_margin(ax, loss, protocol, interval, technique):
 
 def plot_service_times_over_time(dataset, title, loss):
     protocol_list = ["Reactive Explicit", "Symmetric", "Pool of Addresses (3)"]
-    interval_list = [0, 260, 1000]
+    interval_list = [0, 1000]
     technique_list = ["Cold", "Pre-copy", "Post-copy", "Hybrid"]
 
     sns.set_style("whitegrid")
     for technique in technique_list:
-        fig, axes = plt.subplots(ncols=3, nrows=3, figsize=(35.60, 21.60))
+        fig, axes = plt.subplots(ncols=2, nrows=3, figsize=(25.60, 14.40))
 
         for i, protocol in enumerate(protocol_list):
             for j, interval in enumerate(interval_list):
@@ -217,37 +224,32 @@ def plot_service_times_over_time(dataset, title, loss):
                                   "memoryFootprintInflation [MB]"] == 0) &
                              (dataset[
                                   "intervalBetweenRequests [ms]"] == interval) &
-                             (dataset["shiftedRequestTimestamps [s]"] <= 140) &
-                             (dataset["shiftedRequestTimestamps [s]"] >= 30) &
+                             (dataset["shiftedRequestTimestamps [s]"] <= 120) &
+                             (dataset["shiftedRequestTimestamps [s]"] >= 80) &
                              (dataset["connectionEndedDueToTimeout"] == False)]
                 ax = axes[i, j]
 
                 n_colors = len(df["seedClient"].unique())
                 palette = sns.cubehelix_palette(start=-.2, rot=.6,
                                                 reverse=True, n_colors=n_colors)
-                sns.lineplot(x="shiftedRequestTimestamps [s]",
+                sns.lineplot(x="shiftedRequestTimestamps [s]", estimator=None,
                              y="serviceTimes [s]", hue="seedClient", data=df,
-                             ci=None, ax=ax, legend=False, palette=palette)
-
-                migration_notification_timestamp = \
-                    df["shiftedMigrationNotificationTimestamp [s]"].iloc[0]
-                ax.axvline(migration_notification_timestamp, 0, 1,
-                           color="black", zorder=10,
-                           linewidth=2, linestyle=":",
-                           label="Imminent migration notification")
+                             ci=None, ax=ax, legend=False, palette=palette,
+                             marker="o", markeredgewidth=0, markersize=5,
+                             rasterized=True)
 
                 migration_trigger_timestamp = \
                     df["shiftedMigrationTriggerTimestamp [s]"].iloc[0]
                 ax.axvline(migration_trigger_timestamp, 0, 1, color="black",
                            zorder=10, linewidth=2, linestyle="--",
-                           label="Migration trigger")
+                           label="Migration trigger", rasterized=True)
 
                 ax.set_xmargin(0)
                 adjust_y_margin(ax, loss, protocol, interval, technique)
 
                 ax.set_ylim(top=6)
                 ax.set_yticks(np.arange(0, 7, 1))
-                ax.set_xticks(np.arange(30, 150, 10))
+                ax.set_xticks(np.arange(80, 125, 5))
 
                 ax.tick_params(axis="both", which="major", labelsize=14)
                 ax.tick_params(axis="both", which="minor", labelsize=14)
@@ -255,75 +257,234 @@ def plot_service_times_over_time(dataset, title, loss):
                 ax.set(xlabel=None, ylabel=None)
 
         for ax, col in zip(axes[0, :],
-                           ["Back-to-back requests", "Requests every 260 ms",
-                            "Requests every 1 s"]):
+                           ["Back-to-back requests", "Requests every 1 s"]):
             ax.annotate(col, (0.5, 1), xytext=(0, 10), ha="center", va="bottom",
                         size=20, xycoords="axes fraction",
                         textcoords="offset points")
 
-        for ax, row in zip(axes[:, 0], ["QUIC protocol: {}".format(e) for e in
-                                        protocol_list]):
+        for ax, row in zip(axes[:, 0], ["{}".format(e) for e in protocol_list]):
             ax.annotate(row, (0, 0.5), xytext=(-95, 0), ha="right", va="center",
                         size=20, rotation=90, xycoords="axes fraction",
                         textcoords="offset points")
 
         axes[2, 0].set_xlabel("Request time [s]", fontsize=20, labelpad=20)
         axes[2, 1].set_xlabel("Request time [s]", fontsize=20, labelpad=20)
-        axes[2, 2].set_xlabel("Request time [s]", fontsize=20, labelpad=20)
         axes[0, 0].set_ylabel("Service time [s]", fontsize=20, labelpad=20)
         axes[1, 0].set_ylabel("Service time [s]", fontsize=20, labelpad=20)
         axes[2, 0].set_ylabel("Service time [s]", fontsize=20, labelpad=20)
 
-        fig.suptitle("{}, {} migration".format(title, technique),
+        fig.suptitle("{} - {}".format(title, technique),
                      fontsize=30, y=0.95)
-        plt.savefig(service_times_figure_save_path(), format="png",
+        plt.savefig(service_times_figure_save_path(), format="pdf",
                     dpi=300, bbox_inches="tight")
         plt.show()
 
 
+def plot_single_service_time_trace(dataset, title):
+    sns.set_style("whitegrid")
+    plt.figure(figsize=(19.80, 10.80))
+
+    df = dataset[(dataset["protocol"] == "Symmetric") &
+                 (dataset["migrationTechnique"] == "Cold") &
+                 (dataset["memoryFootprintInflation [MB]"] == 0) &
+                 (dataset["intervalBetweenRequests [ms]"] == 0) &
+                 (dataset["shiftedRequestTimestamps [s]"] <= 115) &
+                 (dataset["shiftedRequestTimestamps [s]"] >= 30) &
+                 (dataset["connectionEndedDueToTimeout"] == False)]
+
+    n_colors = len(df["seedClient"].unique())
+    palette = sns.cubehelix_palette(start=-.2, rot=.6,
+                                    reverse=True, n_colors=n_colors)
+    ax = sns.lineplot(x="shiftedRequestTimestamps [s]", estimator=None,
+                      y="serviceTimes [s]", hue="seedClient", data=df,
+                      ci=None, legend=False, palette=palette,
+                      marker="o", markeredgewidth=0, markersize=4,
+                      rasterized=True)
+
+    migration_trigger_timestamp = \
+        df["shiftedMigrationTriggerTimestamp [s]"].iloc[0]
+    ax.axvline(migration_trigger_timestamp, 0, 1, color="black",
+               zorder=10, linewidth=2, linestyle="--",
+               label="Migration trigger", rasterized=True)
+
+    ax.set_xmargin(0)
+    ax.set_ylim(top=6)
+    ax.set_yticks(np.arange(0, 7, 1))
+    ax.set_xticks(np.arange(30, 120, 5))
+
+    ax.tick_params(axis="both", which="major", labelsize=14)
+    ax.tick_params(axis="both", which="minor", labelsize=14)
+    ax.legend(loc="upper left", fontsize=13)
+    ax.set_xlabel("Request time [s]", fontsize=20, labelpad=30)
+    ax.set_ylabel("Service time [s]", fontsize=20, labelpad=30)
+    ax.set_title(title, fontsize=20)
+
+    plt.savefig(service_times_figure_save_path(), format="pdf",
+                dpi=300, bbox_inches="tight")
+    plt.show()
+
+
+def plot_request_size_depending_on_services_times(dataset, title):
+    df_get = dataset[(dataset["requestMethods"] == "GET") &
+                     (dataset["shiftedRequestTimestamps [s]"] <= 90) &
+                     (dataset["intervalBetweenRequests [ms]"] == 0)]
+
+    df_post = dataset[(dataset["requestMethods"] == "POST") &
+                      (dataset["shiftedRequestTimestamps [s]"] <= 90) &
+                      (dataset["intervalBetweenRequests [ms]"] == 0)]
+
+    sns.set_style("whitegrid")
+    plt.figure(figsize=(19.80, 10.80))
+
+    ax = sns.scatterplot(x="serviceTimes [s]", y="responseBodySizes [MB]",
+                         estimator=None, data=df_get, ci=None,
+                         label="GET request", rasterized=True)
+
+    ax = sns.scatterplot(x="serviceTimes [s]", y="requestBodySizes [MB]",
+                         estimator=None, data=df_post, ci=None,
+                         label="POST request", rasterized=True)
+
+    ax.set_xticks(np.arange(0, 3.25, 0.25))
+    ax.set_yticks(np.arange(0, 0.9, 0.1))
+    ax.tick_params(axis="both", which="major", labelsize=14)
+    ax.tick_params(axis="both", which="minor", labelsize=14)
+
+    ax.set_xlim(0, 3)
+    ax.set_ylim(0, 0.8)
+
+    xticks = ax.xaxis.get_major_ticks()
+    yticks = ax.yaxis.get_major_ticks()
+    xticks[0].label1.set_visible(False)
+    yticks[0].label1.set_visible(False)
+
+    ax.set_xlabel("Service time [s]", fontsize=20, labelpad=30)
+    ax.set_ylabel("Request/response size [MB]", fontsize=20, labelpad=30)
+    ax.legend(loc="upper left", fontsize=14)
+    ax.set_title(title, fontsize=20)
+
+    plt.savefig(request_response_size_save_path(),
+                format="pdf", dpi=300, bbox_inches="tight")
+    plt.show()
+
+
+def plot_services_times_depending_on_request_size(dataset, title):
+    df_get = dataset[(dataset["requestMethods"] == "GET") &
+                     (dataset["shiftedRequestTimestamps [s]"] <= 90) &
+                     (dataset["intervalBetweenRequests [ms]"] == 0)]
+
+    df_post = dataset[(dataset["requestMethods"] == "POST") &
+                      (dataset["shiftedRequestTimestamps [s]"] <= 90) &
+                      (dataset["intervalBetweenRequests [ms]"] == 0)]
+
+    sns.set_style("whitegrid")
+    plt.figure(figsize=(19.80, 10.80))
+
+    ax = sns.scatterplot(y="serviceTimes [s]", x="responseBodySizes [MB]",
+                         estimator=None, data=df_get, ci=None, zorder=10,
+                         label="GET request", rasterized=True)
+
+    ax = sns.scatterplot(y="serviceTimes [s]", x="requestBodySizes [MB]",
+                         estimator=None, data=df_post, ci=None,
+                         label="POST request", rasterized=True, zorder=10)
+
+    # Plot interpolation. "65" means 65 KB.
+    interp_x = np.sort(np.unique(df_get["responseBodySizes [MB]"].values))
+    interp_y = interp_x / ((65 / 2) / 1024) * 0.122
+    data_interp = pd.DataFrame(
+        {"serviceTimes [s]": interp_x, "size [MB]": interp_y})
+    sns.lineplot(x="serviceTimes [s]", y="size [MB]", data=data_interp,
+                 estimator=None, ci=None, color="black", linestyle="--",
+                 label=r"$y=\dfrac{2\cdot Size}{65~KB}\cdot 122~ms$",
+                 rasterized=True)
+
+    ax.set_yticks(np.arange(0, 3.25, 0.25))
+    ax.set_xticks(np.arange(0, 0.9, 0.1))
+    ax.tick_params(axis="both", which="major", labelsize=14)
+    ax.tick_params(axis="both", which="minor", labelsize=14)
+
+    ax.set_ylim(0, 3)
+    ax.set_xlim(0, 0.8)
+
+    yticks = ax.yaxis.get_major_ticks()
+    yticks[0].label1.set_visible(False)
+
+    ax.set_ylabel("Service time [s]", fontsize=20, labelpad=30)
+    ax.set_xlabel("Request/response size [MB]", fontsize=20, labelpad=30)
+    ax.legend(loc="upper left", fontsize=14)
+    ax.set_title(title, fontsize=20)
+
+    plt.savefig(request_response_size_save_path(),
+                format="pdf", dpi=300, bbox_inches="tight")
+    plt.show()
+
+
 def main():
-    base_path = "data/nopacketloss/exp4/"
-    no_packet_loss_paths = {
+    base_path = "data/nopacketloss/exp4/18ms_rtt/"
+    paths_18ms = {
         "serviceTimes": base_path + "experiment4_service_times.csv",
         "migrationTimes": base_path + "experiment4_migration_times.csv",
         "restoreTimes": base_path + "experiment4_restore_times.csv",
-        "preProcessedDataset": base_path + "df_no_loss.pickle"
+        "convertedDataset": base_path + "df_loss.pickle"
     }
 
-    base_path = "data/packetloss/exp4/"
-    packet_loss_paths = {
+    base_path = "data/packetloss/exp4/18ms_rtt/"
+    paths_18ms_with_loss = {
         "serviceTimes": base_path + "experiment4_service_times.csv",
         "migrationTimes": base_path + "experiment4_migration_times.csv",
         "restoreTimes": base_path + "experiment4_restore_times.csv",
-        "preProcessedDataset": base_path + "df_loss.pickle"
+        "convertedDataset": base_path + "df_loss.pickle"
     }
+
+    base_path = "data/nopacketloss/exp4/122ms_rtt/"
+    paths_122ms = {
+        "serviceTimes": base_path + "experiment4_service_times.csv",
+        "migrationTimes": base_path + "experiment4_migration_times.csv",
+        "restoreTimes": base_path + "experiment4_restore_times.csv",
+        "convertedDataset": base_path + "df_no_loss.pickle"
+    }
+
+    base_path = "data/packetloss/exp4/122ms_rtt/"
+    paths_122ms_with_loss = {
+        "serviceTimes": base_path + "experiment4_service_times.csv",
+        "migrationTimes": base_path + "experiment4_migration_times.csv",
+        "restoreTimes": base_path + "experiment4_restore_times.csv",
+        "convertedDataset": base_path + "df_loss.pickle"
+    }
+
     n_clients = 30
 
-    try:
-        dataset_no_loss = pd.read_pickle(
-            no_packet_loss_paths["preProcessedDataset"])
-    except:
-        dataset_no_loss = parse_dataset(no_packet_loss_paths)
-        dataset_no_loss.to_pickle(no_packet_loss_paths["preProcessedDataset"])
+    # Load datasets.
+    dataset_18ms = load_dataset_from_pickle_or_csv(paths_18ms)
+    dataset_18ms_with_loss = \
+        load_dataset_from_pickle_or_csv(paths_18ms_with_loss)
 
-    try:
-        dataset_loss = pd.read_pickle(packet_loss_paths["preProcessedDataset"])
-    except:
-        dataset_loss = parse_dataset(packet_loss_paths)
-        dataset_loss.to_pickle(packet_loss_paths["preProcessedDataset"])
+    dataset_122ms = load_dataset_from_pickle_or_csv(paths_122ms)
+    dataset_122ms_with_loss = \
+        load_dataset_from_pickle_or_csv(paths_122ms_with_loss)
 
-    preprocessed_dataset_no_loss = preprocess_dataset(dataset_no_loss,
-                                                      n_clients)
-    preprocessed_dataset_loss = preprocess_dataset(dataset_loss,
-                                                   n_clients)
+    # Preprocess datasets.
+    preprocessed_18ms = preprocess_dataset(dataset_18ms, n_clients)
+    preprocessed_18ms_with_loss = \
+        preprocess_dataset(dataset_18ms_with_loss, n_clients)
 
+    preprocessed_122ms = preprocess_dataset(dataset_122ms, n_clients)
+    preprocessed_122ms_with_loss = \
+        preprocess_dataset(dataset_122ms_with_loss, n_clients)
+
+    # Plot.
     os.makedirs("./plots", exist_ok=True)
-    plot_service_times_over_time(preprocessed_dataset_no_loss,
-                                 "No packet loss",
-                                 loss=False)
-    plot_service_times_over_time(preprocessed_dataset_loss,
-                                 "Packet loss 3 %",
-                                 loss=True)
+
+    plot_service_times_over_time(
+        preprocessed_18ms, "No loss - 18 ms", loss=False)
+    plot_service_times_over_time(
+        preprocessed_18ms_with_loss, "3% packet loss - 18 ms", loss=True)
+
+    plot_single_service_time_trace(preprocessed_122ms, "No loss - 122 ms")
+
+    plot_services_times_depending_on_request_size(
+        preprocessed_122ms, "No loss - 122 ms RTT")
+    plot_request_size_depending_on_services_times(
+        preprocessed_122ms, "No loss - 122 ms RTT")
 
 
 if __name__ == "__main__":

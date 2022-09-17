@@ -86,7 +86,7 @@ def preprocess_dataset(dataset):
 
 
 def figure_save_path():
-    return "plots/exp1_service_times_{}.png".format(str(time.time()))
+    return "plots/exp1_service_times_{}.pdf".format(str(time.time()))
 
 
 def set_labels_over_bars(ax, label_height_increments):
@@ -99,7 +99,7 @@ def set_labels_over_bars(ax, label_height_increments):
                     fontweight="bold", textcoords="offset points")
 
 
-def plot_service_times(dataset, label_height_increases, title):
+def plot_service_times(dataset, label_height_increments, title):
     plt.figure(figsize=(19.20, 10.80))
     sns.set_style("whitegrid")
     sns.set_palette(sns.color_palette("hls"))
@@ -113,10 +113,10 @@ def plot_service_times(dataset, label_height_increases, title):
 
     ax.tick_params(axis="both", which="major", labelsize=14)
     ax.tick_params(axis="both", which="minor", labelsize=14)
-    set_labels_over_bars(ax, label_height_increases)
+    set_labels_over_bars(ax, label_height_increments)
 
-    plt.yticks(np.arange(0, 3250, 250))
-    plt.savefig(figure_save_path(), format="png", dpi=300, bbox_inches="tight")
+    plt.yticks(np.arange(0, 3000, 250))
+    plt.savefig(figure_save_path(), format="pdf", dpi=300, bbox_inches="tight")
     plt.show()
 
 
@@ -146,9 +146,9 @@ def plot_service_times_together(dataset_no_loss, dataset_loss, figsize):
     ax2.tick_params(axis="both", which="minor", labelsize=14)
     set_labels_over_bars(ax2, [80, 80, 150, 260, 1060, 80, 80])
 
-    plt.setp(f.axes, yticks=np.arange(0, 3250, 250))
+    plt.setp(f.axes, yticks=np.arange(0, 3500, 500))
     plt.tight_layout(h_pad=10)
-    plt.savefig(figure_save_path(), format="png", dpi=300, bbox_inches="tight")
+    plt.savefig(figure_save_path(), format="pdf", dpi=300, bbox_inches="tight")
     plt.show()
 
 
@@ -176,10 +176,10 @@ def main():
 
     os.makedirs("./plots", exist_ok=True)
     plot_service_times(preprocessed_dataset_no_loss,
-                       label_height_increases=[40, 40, 60, 80, 140, 40, 40],
+                       label_height_increments=[40, 40, 60, 80, 140, 40, 40],
                        title="No packet loss")
     plot_service_times(preprocessed_dataset_loss,
-                       label_height_increases=[40, 40, 110, 220, 1020, 40, 40],
+                       label_height_increments=[40, 40, 110, 220, 1020, 40, 40],
                        title="Packet loss 3 %")
     plot_service_times_together(preprocessed_dataset_no_loss,
                                 preprocessed_dataset_loss,

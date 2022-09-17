@@ -4,6 +4,7 @@ import numpy as np
 import pandas as pd
 import seaborn as sns
 import matplotlib.pyplot as plt
+import matplotlib.patches as mpatches
 
 
 def parse_dataset(dataset_paths):
@@ -155,21 +156,21 @@ def preprocess_dataset(dataset):
 
 
 def service_times_figure_save_path():
-    return "plots/exp2_service_times_{}.png".format(str(time.time()))
+    return "plots/exp2_service_times_{}.pdf".format(str(time.time()))
 
 
 def container_migration_time_figure_save_path(compression_enabled):
     if compression_enabled:
-        return "plots/exp2_container_migration_time_with_compression_{}.png" \
+        return "plots/exp2_container_migration_time_with_compression_{}.pdf" \
             .format(str(time.time()))
-    return "plots/exp2_container_migration_time_{}.png".format(str(time.time()))
+    return "plots/exp2_container_migration_time_{}.pdf".format(str(time.time()))
 
 
 def container_migration_overhead_figure_save_path(compression_enabled):
     if compression_enabled:
         return "plots/exp2_container_migration_overhead_with_compression_{}" \
-               ".png".format(str(time.time()))
-    return "plots/exp2_container_migration_overhead_{}.png" \
+               ".pdf".format(str(time.time()))
+    return "plots/exp2_container_migration_overhead_{}.pdf" \
         .format(str(time.time()))
 
 
@@ -197,7 +198,7 @@ def plot_service_times_group_by_quic_protocol(dataset, title):
         ax.legend(loc="upper right", fontsize=15)
 
         plt.yticks(np.arange(0, 42, 2))
-        plt.savefig(service_times_figure_save_path(), format="png", dpi=300,
+        plt.savefig(service_times_figure_save_path(), format="pdf", dpi=300,
                     bbox_inches="tight")
         plt.show()
 
@@ -227,7 +228,7 @@ def plot_service_times_group_by_migration_technique(dataset, title):
         ax.legend(loc="upper right", fontsize=15)
 
         plt.yticks(np.arange(0, 42, 2))
-        plt.savefig(service_times_figure_save_path(), format="png", dpi=300,
+        plt.savefig(service_times_figure_save_path(), format="pdf", dpi=300,
                     bbox_inches="tight")
         plt.show()
 
@@ -235,30 +236,49 @@ def plot_service_times_group_by_migration_technique(dataset, title):
 def plot_service_times_scatterplot(dataset, title):
     sns.set_style("whitegrid")
     plt.figure(figsize=(19.20, 10.80))
+
+    techniques = ["Cold", "Pre-copy", "Post-copy", "Hybrid", "empty_bar"]
+    inflations = [0, 10, 50, 100]
+    hue_order = []
+    for i in inflations:
+        for t in techniques:
+            hue_order.append((i, t))
+
+    palette = sns.color_palette("tab10", n_colors=6)
+    palette.pop(3)
+
     ax = sns.stripplot(x="protocol", y="migrationAffectedServiceTime [s]",
                        hue=dataset[["memoryFootprintInflation [MB]",
                                     "migrationTechnique"]].apply(tuple, axis=1),
                        data=dataset, marker="o", dodge=True, size=10,
-                       palette="coolwarm")
+                       palette=palette, hue_order=hue_order)
 
-    ax.set_xlabel("QUIC migration protocol", fontsize=15, labelpad=20)
+    ax.set_xlabel("QUIC migration protocol", fontsize=15, labelpad=30)
     ax.set_ylabel("Service time [s]", fontsize=15, labelpad=20)
     ax.set_xticklabels(ax.get_xmajorticklabels(), fontsize=13)
 
-    patches, labels = ax.get_legend_handles_labels()
-    final_labels = []
-    for label in labels:
-        label_tuple = eval(label)
-        final_labels.append("{}, Memory inflation {} MB".format(label_tuple[1],
-                                                                label_tuple[0]))
+    ax.tick_params(axis="x", which="major", labelsize=14, pad=25)
+    ax.tick_params(axis="y", which="major", labelsize=14)
+    ax.tick_params(axis="both", which="minor", labelsize=12,
+                   reset=True, top=False)
+    minor_ticks_positions = []
+    for x in range(0, 4):
+        minor_ticks_positions.append(x - 0.325)
+        minor_ticks_positions.append(x - 0.11)
+        minor_ticks_positions.append(x + 0.09)
+        minor_ticks_positions.append(x + 0.29)
+    ax.set_xticks(minor_ticks_positions,
+                  ["{} MB".format(e) for e in inflations * 4],
+                  minor=True, ha="center")
+
+    legend_entries = [mpatches.Patch(color=palette[k], label=t)
+                      for k, t in enumerate(techniques[:-1])]
+    ax.legend(loc="upper left", fontsize=13, ncol=1, handles=legend_entries)
 
     ax.set_title(title, fontsize=20)
-    ax.legend(handles=patches, loc="upper left", fontsize=15,
-              labels=final_labels)
-
-    plt.ylim(0, 30)
-    plt.yticks(np.arange(0, 32, 2))
-    plt.savefig(service_times_figure_save_path(), format="png", dpi=300,
+    ax.set_ymargin(0)
+    plt.yticks(np.arange(0, 110, 10))
+    plt.savefig(service_times_figure_save_path(), format="pdf", dpi=300,
                 bbox_inches="tight")
     plt.show()
 
@@ -266,28 +286,52 @@ def plot_service_times_scatterplot(dataset, title):
 def plot_service_times_group_by_quic_protocol_all_together(dataset, title):
     sns.set_style("whitegrid")
     plt.figure(figsize=(19.20, 10.80))
+
+    techniques = ["Cold", "Pre-copy", "Post-copy", "Hybrid", "empty_bar"]
+    inflations = [0, 10, 50, 100]
+    hue_order = []
+    for i in inflations:
+        for t in techniques:
+            hue_order.append((i, t))
+
+    palette = sns.color_palette("tab10", n_colors=6)
+    palette.pop(3)
+
     ax = sns.barplot(x="protocol", y="migrationAffectedServiceTime [s]",
                      hue=dataset[["memoryFootprintInflation [MB]",
                                   "migrationTechnique"]].apply(tuple, axis=1),
-                     data=dataset, ci=95, estimator=np.mean, capsize=0.01,
-                     seed=1, n_boot=1000, saturation=1, palette="coolwarm")
+                     data=dataset, hue_order=hue_order, ci=95,
+                     estimator=np.mean, capsize=0.01, seed=1, n_boot=1000,
+                     saturation=1, palette=palette)
 
-    ax.set_xlabel("QUIC migration protocol", fontsize=15, labelpad=20)
+    ax.set_xlabel("QUIC migration protocol", fontsize=15, labelpad=30)
     ax.set_ylabel("Service time [s]", fontsize=15, labelpad=20)
-    ax.set_xticklabels(ax.get_xmajorticklabels(), fontsize=13)
+    ax.tick_params(axis="x", which="major", labelsize=14, pad=20)
+    ax.tick_params(axis="y", which="major", labelsize=14)
+    ax.tick_params(axis="both", which="minor", labelsize=10,
+                   reset=True, top=False)
 
-    patches, labels = ax.get_legend_handles_labels()
-    final_labels = []
-    for label in labels:
-        label_tuple = eval(label)
-        final_labels.append("{}, Memory inflation {} MB".format(label_tuple[1],
-                                                                label_tuple[0]))
-    ax.legend(handles=patches, loc="upper left",
-              fontsize=15, labels=final_labels)
+    sorted_bar_positions = sorted([bar.get_x() + bar.get_width()
+                                   for bar in ax.patches])
+    filtered_bar_positions = []
+    for i, pos in enumerate(sorted_bar_positions):
+        if i in np.arange(1, 80, 5):
+            filtered_bar_positions.append(pos)
+
+    ax.set_xticks(filtered_bar_positions,
+                  ["{} MB".format(e) for e in inflations * 4],
+                  minor=True, ha="center")
+    ax.xaxis.remove_overlapping_locs = False
+
+    legend_entries = [mpatches.Patch(color=palette[k], label=t)
+                      for k, t in enumerate(techniques[:-1])]
+    ax.legend(loc="upper center", fontsize=13, ncol=5, handles=legend_entries)
+
     ax.set_title(title, fontsize=20)
+    ax.set_ymargin(0)
 
-    plt.yticks(np.arange(0, 42, 2))
-    plt.savefig(service_times_figure_save_path(), format="png", dpi=300,
+    plt.yticks(np.arange(0, 50, 5))
+    plt.savefig(service_times_figure_save_path(), format="pdf", dpi=300,
                 bbox_inches="tight")
     plt.show()
 
@@ -386,6 +430,19 @@ def plot_container_migration_time(dataset, as_percentage,
     bar_centered_x = np.arange(len(techniques))
     bar_width = 0.2
 
+    # Colors used for the bars, where each metric has a different color.
+    colors = [sns.color_palette("Blues").as_hex()[3],
+              sns.color_palette("light:salmon_r").as_hex()[2],
+              sns.color_palette("YlOrBr").as_hex()[3],
+              sns.color_palette("Purples").as_hex()[3],
+              sns.light_palette("seagreen").as_hex()[3],
+              sns.color_palette("ch:s=-.2,r=.6").as_hex()[3]]
+
+    # List of dictionaries used to avoid printing confidence
+    # intervals for the bars with a value of 0.
+    error_kw = [{"errorevery": (1, 2)}, {"errorevery": (1, 2)},
+                {}, {}, {}, {"errorevery": (2, 1)}]
+
     for i, inflation in enumerate(inflations):
         for k in metrics:
             means[k].clear()
@@ -404,55 +461,48 @@ def plot_container_migration_time(dataset, as_percentage,
         # equivalent, since they have the same length.
         bottom = np.zeros_like(means["preDumpTime [s]"])
 
-        # List of dictionaries used to avoid printing confidence
-        # intervals for the bars with a value of 0.
-        error_kw = [{"errorevery": (1, 2)}, {"errorevery": (1, 2)},
-                    {}, {}, {}, {"errorevery": (2, 1)}]
-
-        # Colors used for the bars, where each metric has a different palette.
-        # For each metric, a different intensity of the palette is used when
-        # denoting a higher memory inflation.
-        colors = [sns.color_palette("Blues").as_hex()[i],
-                  sns.color_palette("light:salmon_r").as_hex()[4 - i],
-                  sns.color_palette("YlOrBr").as_hex()[i],
-                  sns.color_palette("Purples").as_hex()[i],
-                  sns.light_palette("seagreen").as_hex()[i],
-                  sns.color_palette("ch:s=-.2,r=.6").as_hex()[i]]
-
         ax = plt.gca()
         next_bar_position = compute_next_bar_position(bar_centered_x, i,
                                                       bar_width)
         for k, metric in enumerate(metrics):
             g = ax.bar(next_bar_position, means[metric], bottom=bottom,
                        yerr=[cis_lower[metric], cis_upper[metric]],
-                       label="{}, Memory inflation {} MB".format(
-                           convert_container_migration_phase_to_label(metric),
-                           inflation), error_kw=error_kw[k],
+                       error_kw=error_kw[k],
                        color=colors[k], width=bar_width, capsize=5)
-
             ax.bar_label(g, labels=means_labels[metric], label_type="center",
                          fontweight="bold", size=13)
             bottom += np.array(means[metric])
 
     ax = plt.gca()
     ax.set_xlabel("Container migration technique", fontsize=20, labelpad=30)
-    ax.tick_params(axis="both", which="major", labelsize=14)
-    ax.tick_params(axis="both", which="minor", labelsize=14)
+    ax.tick_params(axis="x", which="major", labelsize=14, pad=25)
+    ax.tick_params(axis="y", which="major", labelsize=14)
+    ax.tick_params(axis="both", which="minor", labelsize=12,
+                   reset=True, top=False)
     ax.set_xticks(np.arange(len(techniques)), techniques)
-    ax.legend(loc="upper center", fontsize=13, framealpha=1,
-              bbox_to_anchor=(0.5, 1.15), ncol=4)
+    ax.set_xticks([bar.get_x() + bar.get_width() / 2. for bar in ax.patches],
+                  ["{} MB".format(e) for e in
+                   sorted(inflations * len(techniques) * 6)], minor=True)
+    ax.xaxis.remove_overlapping_locs = False
+
+    legend_entries = [mpatches.Patch(
+        color=colors[k], label=convert_container_migration_phase_to_label(m))
+        for k, m in enumerate(metrics)]
 
     if as_percentage is True:
-        ax.set_ylabel("Container migration duration (%)",
+        ax.legend(loc="upper center", fontsize=13,
+                  ncol=6, handles=legend_entries)
+        ax.set_ylabel("Container migration time (%)",
                       fontsize=20, labelpad=30)
         plt.yticks(np.arange(0, 130, 10))
     else:
-        ax.set_ylabel("Container migration duration [s]",
+        ax.legend(loc="upper left", fontsize=13, handles=legend_entries)
+        ax.set_ylabel("Container migration time [s]",
                       fontsize=20, labelpad=30)
-        plt.yticks(np.arange(0, 7.5, 0.5))
+        plt.yticks(np.arange(0, 6.5, 0.5))
 
     plt.savefig(container_migration_time_figure_save_path(compression_enabled),
-                format="png", dpi=300, bbox_inches="tight")
+                format="pdf", dpi=300, bbox_inches="tight")
     plt.show()
 
 
@@ -475,6 +525,15 @@ def plot_container_migration_overhead(dataset, as_percentage,
     bar_centered_x = np.arange(len(techniques))
     bar_width = 0.2
 
+    # List of dictionaries used to avoid printing confidence
+    # intervals for the bars with a value of 0.
+    error_kw = [{"errorevery": (1, 2)}, {}, {"errorevery": (2, 1)}]
+
+    # Colors used for the bars, where each metric has a different color.
+    colors = [sns.color_palette("Blues").as_hex()[3],
+              sns.color_palette("light:salmon_r").as_hex()[2],
+              sns.light_palette("seagreen").as_hex()[3]]
+
     for i, inflation in enumerate(inflations):
         for k in metrics:
             means[k].clear()
@@ -493,27 +552,13 @@ def plot_container_migration_overhead(dataset, as_percentage,
         # equivalent, since they have the same length.
         bottom = np.zeros_like(means["lazyPagesTotalSize [MB]"])
 
-        # List of dictionaries used to avoid printing confidence
-        # intervals for the bars with a value of 0.
-        error_kw = [{"errorevery": (1, 2)}, {}, {"errorevery": (2, 1)}]
-
-        # Colors used for the bars, where each metric has a different palette.
-        # For each metric, a different intensity of the palette is used when
-        # denoting a higher memory inflation.
-        colors = [sns.color_palette("Blues").as_hex()[i],
-                  sns.color_palette("light:salmon_r").as_hex()[4 - i],
-                  sns.light_palette("seagreen").as_hex()[i]]
-
         ax = plt.gca()
         next_bar_position = compute_next_bar_position(bar_centered_x, i,
                                                       bar_width)
         for k, metric in enumerate(metrics):
             g = ax.bar(next_bar_position, means[metric], bottom=bottom,
                        yerr=[cis_lower[metric], cis_upper[metric]],
-                       label="{}, Memory inflation {} MB".format(
-                           convert_container_migration_phase_size_to_label(
-                               metric),
-                           inflation), error_kw=error_kw[k],
+                       error_kw=error_kw[k],
                        color=colors[k], width=bar_width, capsize=5)
 
             if inflation == 0 and as_percentage is False:
@@ -526,16 +571,26 @@ def plot_container_migration_overhead(dataset, as_percentage,
 
     ax = plt.gca()
     ax.set_xlabel("Container migration technique", fontsize=20, labelpad=30)
-    ax.tick_params(axis="both", which="major", labelsize=14)
-    ax.tick_params(axis="both", which="minor", labelsize=14)
+    ax.tick_params(axis="x", which="major", labelsize=14, pad=25)
+    ax.tick_params(axis="y", which="major", labelsize=14)
+    ax.tick_params(axis="both", which="minor", labelsize=12,
+                   reset=True, top=False)
     ax.set_xticks(np.arange(len(techniques)), techniques)
-    ax.legend(loc="upper center", fontsize=13, framealpha=1,
-              bbox_to_anchor=(0.5, 1.1), ncol=4)
+    ax.set_xticks([bar.get_x() + bar.get_width() / 2. for bar in ax.patches],
+                  ["{} MB".format(e) for e in
+                   sorted(inflations * len(techniques) * 3)], minor=True)
+    ax.xaxis.remove_overlapping_locs = False
+
+    legend_entries = [mpatches.Patch(
+        color=colors[k],
+        label=convert_container_migration_phase_size_to_label(m))
+        for k, m in enumerate(metrics)]
+    ax.legend(loc="upper center", fontsize=13, ncol=6, handles=legend_entries)
 
     if as_percentage is True:
         ax.set_ylabel("Container migration overhead [%]",
                       fontsize=20, labelpad=30)
-        plt.yticks(np.arange(0, 130, 10))
+        plt.yticks(np.arange(0, 140, 10))
     else:
         ax.set_ylabel("Container migration overhead [MB]",
                       fontsize=20, labelpad=30)
@@ -543,15 +598,15 @@ def plot_container_migration_overhead(dataset, as_percentage,
 
     plt.savefig(
         container_migration_overhead_figure_save_path(compression_enabled),
-        format="png", dpi=300, bbox_inches="tight")
+        format="pdf", dpi=300, bbox_inches="tight")
     plt.show()
 
 
-def plot_service_times_over_time(dataset):
+def plot_service_times_over_time(dataset, with_loss):
     protocols = ["Proactive Explicit", "Reactive Explicit",
                  "Pool of Addresses (3)", "Symmetric"]
     techniques = ["Cold", "Pre-copy", "Post-copy", "Hybrid"]
-    yticks = [(6, 1), (2, 0.5), (2, 0.5), (2, 0.5)]
+    yticks = [(2, 0.5), (2, 0.5), (2, 0.5), (2, 0.5)]
 
     df = dataset.explode("serviceTimes [us]").reset_index()
     df["requestNumber"] = df.groupby(["run", "repetition"]).cumcount() + 1
@@ -561,7 +616,8 @@ def plot_service_times_over_time(dataset):
     df["serviceTimes [s]"] = df["serviceTimes [us]"] / 1000000
 
     migration_trigger = df["firstRequestAfterMigrationTriggered"].iloc[0] - 1
-    df = df[(df["requestNumber"] >= migration_trigger - 2)]
+    df = df[(df["requestNumber"] >= migration_trigger - 2) &
+            (df["requestNumber"] <= 732)]
 
     for p, protocol in enumerate(protocols):
         sns.set_style("whitegrid")
@@ -576,7 +632,8 @@ def plot_service_times_over_time(dataset):
             sns.lineplot(x="requestNumber", y="serviceTimes [s]",
                          hue="memoryFootprintInflation [MB]",
                          data=df_plot, ci=95, estimator=np.mean,
-                         err_style="band", seed=1, n_boot=1000, ax=ax)
+                         err_style="band", seed=1, n_boot=1000, ax=ax,
+                         marker="o", markeredgewidth=0)
 
             # Plot line denoting the request
             # after which the migration is triggered.
@@ -598,27 +655,33 @@ def plot_service_times_over_time(dataset):
                 ax.set_xticks(np.arange(int(xmin), int(xmax), 2))
 
             ax.set_xmargin(0)
-            if technique == "Pre-copy" or technique == "Hybrid":
-                ax.set_ymargin(0.05)
-            elif protocol == "Proactive Explicit" and technique == "Post-copy":
-                ax.set_ymargin(0.15)
+            if protocol == "Proactive Explicit":
+                if technique != "Post-copy":
+                    ax.set_ymargin(0.01)
+                elif technique == "Pre-copy" or technique == "Hybrid":
+                    ax.set_ymargin(0.05)
             elif protocol == "Reactive Explicit":
                 if technique == "Cold":
                     ax.set_ymargin(0.01)
                 elif technique == "Post-copy":
                     ax.set_ymargin(0.025)
+                elif with_loss is True:
+                    ax.set_ymargin(0.04)
             elif protocol == "Pool of Addresses (3)":
                 if technique == "Cold":
                     ax.set_ymargin(0.002)
                 elif technique == "Post-copy":
                     ax.set_ymargin(0.004)
+                elif with_loss:
+                    ax.set_ymargin(0.01)
             elif protocol == "Symmetric":
                 if technique == "Cold":
                     ax.set_ymargin(0.025)
                 elif technique == "Post-copy":
                     ax.set_ymargin(0.03)
 
-            ax.set_yticks(np.arange(0, yticks[p][0], yticks[p][1]))
+            ax.set_yticks(np.arange(0, yticks[p][0] + yticks[p][1],
+                                    yticks[p][1]))
             ax.set_ylim(top=yticks[p][0])
 
             ax.tick_params(axis="both", which="major", labelsize=14)
@@ -634,7 +697,7 @@ def plot_service_times_over_time(dataset):
         plt.tight_layout(h_pad=5, w_pad=5)
 
         plt.savefig(service_times_figure_save_path(),
-                    format="png", dpi=300, bbox_inches="tight")
+                    format="pdf", dpi=300, bbox_inches="tight")
         plt.show()
 
 
@@ -675,10 +738,10 @@ def main():
     # plot_service_times_group_by_migration_technique(
     #     preprocessed_dataset_no_loss, "No packet loss")
     plot_service_times_scatterplot(
-        preprocessed_dataset_no_loss, "No packet loss")
+        preprocessed_dataset_no_loss, "")
     plot_service_times_group_by_quic_protocol_all_together(
-        preprocessed_dataset_no_loss, "No packet loss")
-    plot_service_times_over_time(preprocessed_dataset_no_loss)
+        preprocessed_dataset_no_loss, "")
+    plot_service_times_over_time(preprocessed_dataset_no_loss, with_loss=False)
 
     # plot_service_times_group_by_quic_protocol(
     #     preprocessed_dataset_loss, "Packet loss 3 %")
@@ -688,6 +751,7 @@ def main():
         preprocessed_dataset_loss, "Packet loss 3 %")
     plot_service_times_group_by_quic_protocol_all_together(
         preprocessed_dataset_loss, "Packet loss 3 %")
+    plot_service_times_over_time(preprocessed_dataset_loss, with_loss=True)
 
     plot_container_migration_time(preprocessed_dataset_no_loss,
                                   as_percentage=False,
@@ -696,11 +760,11 @@ def main():
     plot_container_migration_time(preprocessed_dataset_no_loss,
                                   as_percentage=True,
                                   compression_enabled=False,
-                                  means_percentage_display_threshold=1)
+                                  means_percentage_display_threshold=1.05)
     plot_container_migration_overhead(preprocessed_dataset_no_loss,
                                       as_percentage=False,
                                       compression_enabled=False,
-                                      means_display_threshold=1)
+                                      means_display_threshold=0.70)
     plot_container_migration_overhead(preprocessed_dataset_no_loss,
                                       as_percentage=True,
                                       compression_enabled=False,
@@ -718,11 +782,11 @@ def main():
     plot_container_migration_time(preprocessed_dataset_loss,
                                   as_percentage=True,
                                   compression_enabled=False,
-                                  means_percentage_display_threshold=1)
+                                  means_percentage_display_threshold=1.05)
     plot_container_migration_overhead(preprocessed_dataset_loss,
                                       as_percentage=False,
                                       compression_enabled=False,
-                                      means_display_threshold=1)
+                                      means_display_threshold=0.79)
     plot_container_migration_overhead(preprocessed_dataset_loss,
                                       as_percentage=True,
                                       compression_enabled=False,
@@ -735,7 +799,7 @@ def main():
     plot_container_migration_overhead(preprocessed_dataset_compression,
                                       as_percentage=False,
                                       compression_enabled=True,
-                                      means_display_threshold=1)
+                                      means_display_threshold=0.75)
 
 
 if __name__ == "__main__":
