@@ -13,9 +13,9 @@
     "file": "./keys.txt"
   },
   "requestPattern": {
-    "sporadic": true,
+    "sporadic": false,
     "sporadicInterval": 2000,
-    "backToBack": false
+    "backToBack": true
   },
   "requestBody": {
     "fixed": true,

@@ -1,5 +1,5 @@
 {
-  "serverHost": "192.168.1.104",
+  "serverHost": "192.168.2.1",
   "serverPort": 6666,
   "serverMigration": {
     "enable": false,
@@ -13,13 +13,13 @@
     "file": "./keys.txt"
   },
   "requestPattern": {
-    "sporadic": true,
+    "sporadic": false,
     "sporadicInterval": 2000,
-    "backToBack": false
+    "backToBack": true
   },
   "requestBody": {
-    "fixed": false,
-    "fromDistribution": true
+    "fixed": true,
+    "fromDistribution": false
   },
   "seed": 1,
   "experiment": {

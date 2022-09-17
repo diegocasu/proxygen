@@ -3,10 +3,10 @@ import argparse
 import socket
 import pandas as pd
 import json
+import psutil
 import select
 
 from utils.configuration import *
-from utils.docker import *
 from utils.handover import *
 
 logger = logging.getLogger("client")
@@ -19,32 +19,26 @@ logger.addHandler(handler)
 logger.setLevel(logging.DEBUG)
 
 
-def exit_handler(container_name, logs_destination_path,
-                 config_file, service_times_file, results):
-    stop_container_and_clean_files(container_name, logs_destination_path,
-                                   config_file, service_times_file)
+def exit_handler(client_process, results):
+    stop_client_process(client_process)
     dump_experiment_results_to_file(results, call_from_exit_handler=True)
 
 
-def stop_container_and_clean_files(container_name, logs_destination_path,
-                                   config_file, service_times_file):
-    kill_docker_container(container_name)
-    append_docker_container_logs(container_name, logs_destination_path)
-    remove_docker_container(container_name)
+def stop_client_process(client_process):
+    logger.info("Stopping client process")
     try:
-        os.remove(config_file)
-    except:
-        pass
-    try:
-        os.remove(service_times_file)
+        process = psutil.Process(client_process.pid)
+        for child in process.children(recursive=True):
+            child.kill()
+        process.kill()
     except:
         pass
 
 
 def parse_arguments():
     parser = argparse.ArgumentParser()
-    parser.add_argument("--rebuild_image", dest="rebuild_image",
-                        action="store_true", default=False)
+    parser.add_argument("--initial_access_point", dest="initial_access_point",
+                        action="store", required=True, choices=["ap1", "ap2"])
     parser.add_argument("--server_app_port", dest="server_app_port",
                         action="store", type=int, required=True)
     parser.add_argument("--server_management_port",
@@ -80,12 +74,18 @@ def generate_all_configs():
     return config_and_frequency_list
 
 
-def update_configuration_file(container_name, config_name,
-                              app_config_container_path, new_config):
+def update_configuration_file(config_name, new_config):
     with open(config_name, "w") as config_file:
         json.dump(new_config, config_file, indent=4)
-    copy_to_docker_container(container_name, config_name,
-                             app_config_container_path)
+
+
+def start_client_process(client_exec_path, config_name, vlog_level):
+    cmd = "sudo {} --mode=client --config={} --v={}" \
+        .format(client_exec_path, config_name, vlog_level)
+    logger.info("Starting client process")
+    logger.info("Running '{}'".format(cmd))
+    proc = subprocess.Popen(cmd, shell=True)
+    return proc
 
 
 def notify_imminent_server_migration(migration_notification_socket,
@@ -189,10 +189,51 @@ def send_shutdown(address, port, tcp_socket=False):
     sock.send(command.encode())
 
 
+def send_handover_command(handover_command_socket, response_timeout,
+                          tc_script_path):
+    current_ap = get_current_access_point()
+    if current_ap is None:
+        return False
+
+    next_ap = current_ap.choose_next_ap_for_handover()
+    if next_ap is None:
+        return False
+
+    command = json.dumps({"action": "handover",
+                          "address": "{}:0".format(next_ap.client_address),
+                          "accessPoint": next_ap.ssid,
+                          "accessPointGateway": next_ap.gateway,
+                          "otherAccessPointSubnet": current_ap.subnet,
+                          "tcScript": tc_script_path})
+
+    logger.info("Sending handover command {} to {}:{}"
+                .format(command, current_ap.client_address, 5555))
+    handover_command_socket.sendto(command.encode(),
+                                   (current_ap.client_address, 5555))
+    logger.info("Waiting for the response")
+
+    while True:
+        input_ready, _, _ = select.select(
+            [handover_command_socket], [], [], response_timeout)
+        if not input_ready:
+            return False
+
+        message, address = handover_command_socket.recvfrom(1024)
+        message = message.decode()
+        logger.info("Received message '{}' from {}:{}"
+                    .format(message, *address))
+        if message == "OK":
+            return True
+        elif "error" in message.lower():
+            return False
+        logger.info("Ignoring message")
+
+
 def migrate_periodically_and_shutdown(
         session_duration, migration_frequency, first_server_ip_eth,
         second_server_ip_eth, first_server_ip_wifi, second_server_ip_wifi,
-        server_app_port, server_management_port, quic_protocol, container_name):
+        server_app_port, server_management_port, quic_protocol,
+        client_process, tc_script_path):
     handover_timestamp_list = []
     migration_notification_timestamp_list = []
     migration_trigger_timestamp_list = []
@@ -208,27 +249,23 @@ def migrate_periodically_and_shutdown(
 
     migration_notification_socket = \
         socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
-    migration_notification_timeout = 180
+    handover_command_socket = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
+    handover_command_socket.bind(("127.0.0.1", 0))
+
+    command_timeout = 180
     wait_time_before_ending_experiment = 300
 
     for i in range(0, n_migrations):
         time.sleep(migration_frequency * 60)  # Frequency in seconds.
 
-        # Check if client container is still running.
-        state = get_docker_container_state(container_name)
-        if state == DockerContainerState.EXITED \
-                or state == DockerContainerState.PAUSED:
-            logger.error("Client application timed out. Stopping the run")
-            early_exit = True
-            break
-
         # Perform handover.
         handover_timestamp = time.time()
-        success = perform_handover()
+        success = send_handover_command(
+            handover_command_socket, command_timeout, tc_script_path)
         handover_timestamp_list.append(handover_timestamp)
         if not success:
             logger.error("Stopping run after handover failure")
-            kill_docker_container(container_name)
+            stop_client_process(client_process)
             early_exit = True
             break
 
@@ -239,7 +276,7 @@ def migrate_periodically_and_shutdown(
         success = notify_imminent_server_migration(
             migration_notification_socket, server_management_current_ip,
             server_management_port, destination_address, quic_protocol,
-            migration_notification_timeout)
+            command_timeout)
         if not success:
             logger.error("Timeout while sending the imminent migration "
                          "notification. Stopping the run")
@@ -248,7 +285,7 @@ def migrate_periodically_and_shutdown(
 
         # Wait for the server to be ready and send the migration trigger.
         ready = wait_for_migration_ready_notification(
-            migration_notification_socket, migration_notification_timeout)
+            migration_notification_socket, command_timeout)
         if not ready:
             logger.error("Timeout while waiting for the server to "
                          "prepare for migration. Stopping the run")
@@ -286,22 +323,7 @@ def migrate_periodically_and_shutdown(
            migration_trigger_timestamp_list
 
 
-def wait_for_client_termination(container_name):
-    logger.info("Waiting for client termination")
-    while True:
-        state = get_docker_container_state(container_name)
-        if state == DockerContainerState.EXITED \
-                or state == DockerContainerState.PAUSED:
-            logger.info("Client terminated")
-            break
-        time.sleep(5)
-
-
-def parse_service_times_dump(container_name, service_times_file,
-                             app_service_times_dump_container_path):
-    copy_from_docker_container(container_name, service_times_file,
-                               app_service_times_dump_container_path)
-
+def parse_service_times_dump(service_times_file):
     try:
         with open(service_times_file, "r") as dump_file:
             service_times = json.load(dump_file)
@@ -347,16 +369,10 @@ def dump_experiment_results_to_file(results, call_from_exit_handler=False):
 
 def main():
     args = parse_arguments()
-    container_name = "mhq-client"
-    docker_network = "docker_handover"
-    logs_destination_path = "exp5_client_docker.out"
-
+    client_exec_path = "./proxygen/proxygen/_build/proxygen/httpserver/mhq"
+    tc_script_path = os.path.abspath("../tc/tc_setup_experiment_5.sh")
     config_file = "config.json"
-    app_config_container_path = "/usr/src/app/proxygen/"
-
     service_times_file = "service_times.json"
-    app_service_times_dump_container_path = \
-        "/usr/src/app/proxygen/" + service_times_file
 
     results = {"experiment": [], "run": [], "repetition": [], "seed": [],
                "protocol": [], "clientMigrationFrequency [min]": [],
@@ -365,19 +381,12 @@ def main():
                "migrationNotificationTimestamps [s]": [],
                "migrationTriggerTimestamps [s]": []}
 
-    if args.rebuild_image:
-        pull_latest_docker_image()
-
-    # Handler used to stop the container and
-    # clean the local directory if a failure occurs.
-    atexit.unregister(exit_handler)
-    atexit.register(exit_handler, container_name, logs_destination_path,
-                    config_file, service_times_file, results)
-
     run = 0
     seed = 0
     session_duration = 60  # 1 hour, expressed in minutes
+    client_process = None
     config_and_frequency_list = generate_all_configs()
+    starting_ap = AccessPoint[args.initial_access_point.upper()]
 
     for config, migration_frequency in config_and_frequency_list:
         run += 1
@@ -389,14 +398,13 @@ def main():
                         .format(migration_frequency,
                                 json.dumps(config, indent=4)))
 
-            # Always start connected to AP1.
-            success = perform_handover(selected_access_point=AccessPoint.AP1)
+            # Always start connected to the access point passed as argument.
+            success = perform_handover(starting_ap)
             if not success:
                 logger.error("Impossible to start the run: "
                              "cannot connect to the access point")
-                stop_container_and_clean_files(
-                    container_name, logs_destination_path,
-                    config_file, service_times_file)
+                if client_process is not None:
+                    stop_client_process(client_process)
 
                 send_shutdown(args.first_server_ip_eth,
                               args.server_management_port)
@@ -406,12 +414,14 @@ def main():
                 time.sleep(10)
                 continue
 
-            # Start the client container.
-            create_docker_container(container_name, docker_network,
-                                    AppMode.CLIENT, config_file, vlog_level=3)
-            update_configuration_file(container_name, config_file,
-                                      app_config_container_path, config)
-            start_docker_container(container_name)
+            # Start the client program.
+            update_configuration_file(config_file, config)
+            client_process = start_client_process(
+                client_exec_path, config_file, vlog_level=3)
+
+            # Handler used to stop the client if a failure occurs.
+            atexit.unregister(exit_handler)
+            atexit.register(exit_handler, client_process, results)
 
             # Start periodic handovers followed by server migrations.
             handover_timestamps, migration_notification_timestamps, \
@@ -422,15 +432,13 @@ def main():
                     args.first_server_ip_wifi, args.second_server_ip_wifi,
                     args.server_app_port, args.server_management_port,
                     config["experiment"]["serverMigrationProtocol"],
-                    container_name)
+                    client_process, tc_script_path)
 
-            wait_for_client_termination(container_name)
+            time.sleep(200)
+            stop_client_process(client_process)
 
             # Save the results.
-            service_times = parse_service_times_dump(
-                container_name, service_times_file,
-                app_service_times_dump_container_path)
-
+            service_times = parse_service_times_dump(service_times_file)
             save_service_times(results, service_times, run, i, config["seed"],
                                config["experiment"]["serverMigrationProtocol"],
                                migration_frequency,
@@ -438,15 +446,9 @@ def main():
                                migration_notification_timestamps,
                                migration_trigger_timestamps)
 
-            # Force container to stop at the end of the run.
-            logger.info(
-                "End of an experiment run: stopping container, if still up")
-            stop_container_and_clean_files(
-                container_name, logs_destination_path,
-                config_file, service_times_file)
-
             # Sleep before starting a new run.
-            logger.info("Sleeping for 10 seconds before the next run")
+            logger.info("End of an experiment run. Sleeping for 10 seconds "
+                        "before the next run")
             time.sleep(10)
 
     logger.info("Ending the experiment")

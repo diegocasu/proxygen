@@ -117,7 +117,7 @@ def main():
     results = {"experiment": [], "run": [], "repetition": [], "seed": []}
     run = 0
     seed = 0
-    migration_frequency_list = [10, 30]  # Minutes
+    migration_frequency_list = [10]  # Minutes
     config = load_base_configuration()
 
     for migration_frequency in migration_frequency_list:
@@ -130,10 +130,8 @@ def main():
 
             seed += 1
             config["seed"] = seed
-
-            if args.first_role == "source":
-                logger.info("New experiment run with configuration\n{}"
-                            .format(json.dumps(config, indent=4)))
+            logger.info("New experiment run with configuration\n{}"
+                        .format(json.dumps(config, indent=4)))
 
             update_configuration_file(
                 runc_base, container_name, app_config_container_path, config)
@@ -166,7 +164,7 @@ def main():
             time.sleep(5)
 
     logger.info("Ending the experiment")
-    dump_experiment_results_to_file(results, args.first_role)
+    dump_experiment_results_to_file(results)
 
 
 if __name__ == "__main__":
