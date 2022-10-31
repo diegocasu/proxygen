@@ -57,8 +57,8 @@ docker build .
 ```
 
 Starting from the Docker image, it is possible to obtain a corresponding OCI
-bundle using [skopeo](https://github.com/containers/skopeo) and
-[umoci](https://github.com/opencontainers/umoci). If you are trying to run the
+bundle using [`skopeo`](https://github.com/containers/skopeo) and
+[`umoci`](https://github.com/opencontainers/umoci). If you are trying to run the
 experiment scripts, fetching and conversion are done automatically, so there is
 no need to manually build the application (except for experiment 5 and 6).
 
